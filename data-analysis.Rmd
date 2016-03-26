@@ -8,9 +8,9 @@ library(ggplot2)
 library(dplyr)
 ```
 
-# Data processing
+# Data Processing
 
-First of all importing the data in to R
+##First of all importing the data in to R
 
 ```{r}
 by2olak_data = read.csv("all-semi-unique.csv")
@@ -18,12 +18,14 @@ by2olak_data = read.csv("all-semi-unique.csv")
 print(head(by2olak_data))
 
 ```
-Remove all the columns related to ads
+## Removal of all the columns related to advertisements
 
 ```{r}
 by2olak_data = subset(by2olak_data, select=-c(ad.aid,ad.bgcl,ad.bgcls,ad.fncl,ad.fncls,ad.lid,ad.logo,ad.logo2x,ad.logoAndroidS,ad.logoAndroidH,ad.cm,ad.url,ad.g))
 ```
-to get a quick idea of the data, a possible way is to get the number of unique values for each column
+
+## Removal of columns with constant values
+To get a quick idea of the data, a possible way is to get the number of unique values for each column
 ```{r}
 print(rapply(by2olak_data,function(x)length(unique(x))))
 ```
@@ -41,7 +43,7 @@ Unique values in rd.cl column
 ```{r}
 print(unique(by2olak_data['rd.cl']))
 ```
-There is only one value which is #E6E6E6 so a column with constant value can be removed.
+There is only one value so the column can be removed.
 ```{r}
 by2olak_data <- subset( by2olak_data, select = -rd.cl)
 ```
@@ -55,6 +57,7 @@ Same thing like rd.cl, there is only one value which is zero so it can be remove
 by2olak_data <- subset( by2olak_data, select = -rd.rp.type)
 ```
 
+## Working with NAs
 
 The Date is a little bit better than before
 ```{r}
@@ -85,15 +88,6 @@ by2olak_data <- by2olak_data %>% mutate(rd.rp.rpImg = ifelse(is.na(rd.rp.rpImg),
 by2olak_data <- by2olak_data %>% mutate(rd.rp.img = ifelse(is.na(rd.rp.img),0,rd.rp.img))
 ```
 
-Create a column to show the reports origin : GPS or Users (boolean)
-```{r}
-by2olak_data['gps'] <- (by2olak_data['rd.rp.nm'] == "bey2ollakgps")
-```
-Create a column to show if the reports are from Annonnoumous Users.
-```{r}
-by2olak_data['anonymous'] <- (by2olak_data['rd.rp.nm'] == "fa3el kheir")
-```
-
 Let's see now the number of NAs in each column after cleaning the data.
 ```{r}
 print(rapply(by2olak_data,function(x)sum(is.na(x))))
@@ -103,9 +97,14 @@ A value should be given for such a scenario, let's have a look at the values of 
 ```{r}
 print(table(by2olak_data['rd.rp.stid']))
 ```
-11 for example is a possible value to be used as they are all from 1 - 10.
+11 for example is a possible value to be used as they are all from 1 to 10.
 ```{r}
 by2olak_data$rd.rp.stid[is.na(by2olak_data$rd.rp.stid)] <- 11
+```
+
+The NAs for the columns after adjustments
+```{r}
+print(rapply(by2olak_data,function(x)sum(is.na(x))))
 ```
 
 For hours and mins of road rd.hr & rd.mn, their NAs can be removed as they are 1507 from all rows, which can be neglected.
@@ -114,3 +113,16 @@ by2olak_data <- by2olak_data[!is.na(by2olak_data$rd.hr),]
 by2olak_data <- by2olak_data[!is.na(by2olak_data$rd.mn),]
 ```
 Now the only column which contains NAs is rd.stid
+
+
+## Additional Columns for adding features
+
+Create a column to show the reports origin : GPS or Users (boolean)
+```{r}
+by2olak_data['gps'] <- (by2olak_data['rd.rp.nm'] == "bey2ollakgps")
+```
+
+Create a column to show if the reports are from Annonnoumous Users.
+```{r}
+by2olak_data['anonymous'] <- (by2olak_data['rd.rp.nm'] == "fa3el kheir")
+```
