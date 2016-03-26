@@ -189,11 +189,12 @@ colnames(by2olak_data)
 ```
 
 ## Renaming the columns to give them a proper meaning
-```{r , result="hide"}
-rename(by2olak_data, c("rd.nm"="road_name", "rd.ri"="road_route_id","rd.stid"="road_status_id",
+```{r}
+by2olak_data <- rename(by2olak_data, c("rd.nm"="road_name", "rd.ri"="road_route_id","rd.stid"="road_status_id",
  "rd.hr"="road_update_hours_ago","rd.mn"="road_update_mins_ago", "rd.new"="road_new","rd.nm"="road_name",
  "rd.img"="road_image","rd.strq"="road_status_request", "rd.cmrq"="road_comment_request",
  "rd.rp.nm"="report_username", "rd.rp.hr"="report_update_hours_ago", "rd.rp.mn"="report_update_mins_ago",
  "rd.rp.stid"="report_status_id" , "rd.rp.cm"="report_comment", "rd.rp.cmid"="report_comment_id" ,
  "rd.rp.rpImg"="report_roadimage" , "rd.rp.img"="report_username_image"))
+colnames(by2olak_data)
 ```
