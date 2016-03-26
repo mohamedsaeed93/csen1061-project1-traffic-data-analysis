@@ -3,4 +3,114 @@ title: Traffic Data Analysis
 output: html_document
 ---
 
-this is where things start :)
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+# Data processing
+
+First of all importing the data in to R
+
+```{r}
+by2olak_data = read.csv("all-semi-unique.csv")
+
+print(head(by2olak_data))
+
+```
+Remove all the columns related to ads
+
+```{r}
+by2olak_data = subset(by2olak_data, select=-c(ad.aid,ad.bgcl,ad.bgcls,ad.fncl,ad.fncls,ad.lid,ad.logo,ad.logo2x,ad.logoAndroidS,ad.logoAndroidH,ad.cm,ad.url,ad.g))
+```
+to get a quick idea of the data, a possible way is to get the number of unique values for each column
+```{r}
+print(rapply(by2olak_data,function(x)length(unique(x))))
+```
+
+Unique values in rd.img column 
+```{r}
+print(unique(by2olak_data['rd.img']))
+```
+It is obvious that NA corresponds to no image which simply can be false.
+```{r}
+by2olak_data <- by2olak_data %>% mutate(rd.img = ifelse(is.na(rd.img),FALSE,rd.img))
+```
+
+Unique values in rd.cl column 
+```{r}
+print(unique(by2olak_data['rd.cl']))
+```
+There is only one value which is #E6E6E6 so a column with constant value can be removed.
+```{r}
+by2olak_data <- subset( by2olak_data, select = -rd.cl)
+```
+
+Unique values in rd.rp.type column
+```{r}
+print(unique(by2olak_data['rd.rp.type']))
+```
+Same thing like rd.cl, there is only one value which is zero so it can be removed.
+```{r}
+by2olak_data <- subset( by2olak_data, select = -rd.rp.type)
+```
+
+
+The Date is a little bit better than before
+```{r}
+head(by2olak_data)
+```
+The 2 columns rd.rp.fullnm & rd.rp.nm are similar from the values of the 2 columns as one is the username and the other is the full name of the user which is not very useful		
+
+We can check the number of NAs in each of them
+```{r}
+print(sum(is.na(by2olak_data['rd.rp.fullnm'])))
+print(sum(is.na(by2olak_data['rd.rp.nm'])))
+```
+It is possible to remove rd.rp.fullnm as it has a lot of NAs and the column does not provide any additional information
+```{r}
+by2olak_data <- subset( by2olak_data, select = -rd.rp.fullnm)
+```
+At this point, it is useful to see the number of NAs in each column:
+```{r}
+print(rapply(by2olak_data,function(x)sum(is.na(x))))
+```
+A lot of NAs are there in rd.rp.rpImg & rd.rp.img so we can add a default value for these NAs
+```{r}
+print(rapply(by2olak_data,function(x)sum(x == 0 | is.na(x))))
+```
+Since the number is the same for NAs and for NAs or zeros. We can conclude there are no zero values so it can be used as a default value
+```{r}
+by2olak_data <- by2olak_data %>% mutate(rd.rp.rpImg = ifelse(is.na(rd.rp.rpImg),0,rd.rp.rpImg))
+by2olak_data <- by2olak_data %>% mutate(rd.rp.img = ifelse(is.na(rd.rp.img),0,rd.rp.img))
+```
+
+Create a column to show the reports origin : GPS or Users (boolean)
+```{r}
+by2olak_data['gps'] <- (by2olak_data['rd.rp.nm'] == "bey2ollakgps")
+```
+Create a column to show if the reports are from Annonnoumous Users.
+```{r}
+by2olak_data['anonymous'] <- (by2olak_data['rd.rp.nm'] == "fa3el kheir")
+```
+
+Let's see now the number of NAs in each column after cleaning the data.
+```{r}
+print(rapply(by2olak_data,function(x)sum(is.na(x))))
+```
+There are still Columns with NAs, the rd.rp.stid with NAs is actually comments or questioning info for the road.
+A value should be given for such a scenario, let's have a look at the values of this column
+```{r}
+print(table(by2olak_data['rd.rp.stid']))
+```
+11 for example is a possible value to be used as they are all from 1 - 10.
+```{r}
+by2olak_data$rd.rp.stid[is.na(by2olak_data$rd.rp.stid)] <- 11
+```
+
+For hours and mins of road rd.hr & rd.mn, their NAs can be removed as they are 1507 from all rows, which can be neglected.
+```{r}	
+by2olak_data <- by2olak_data[!is.na(by2olak_data$rd.hr),]
+by2olak_data <- by2olak_data[!is.na(by2olak_data$rd.mn),]
+```
+Now the only column which contains NAs is rd.stid
