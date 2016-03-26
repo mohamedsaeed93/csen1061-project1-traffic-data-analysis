@@ -6,42 +6,48 @@ output: html_document
 ```{r}
 library(ggplot2)
 library(dplyr)
+library(reshape)
+library(tidyr)
+library(knitr)
 ```
 
 # Data Processing
 
-##First of all importing the data in to R
+##First of all importing the data into R
 
 ```{r}
 by2olak_data = read.csv("all-semi-unique.csv")
+```
 
-print(head(by2olak_data))
-
+```{r, eval=F}
+glimpse(by2olak_data)
 ```
 ## Removal of all the columns related to advertisements
 
 ```{r}
-by2olak_data = subset(by2olak_data, select=-c(ad.aid,ad.bgcl,ad.bgcls,ad.fncl,ad.fncls,ad.lid,ad.logo,ad.logo2x,ad.logoAndroidS,ad.logoAndroidH,ad.cm,ad.url,ad.g))
+by2olak_data = subset(by2olak_data, select=-c(ad.aid,ad.bgcl,ad.bgcls,ad.fncl,ad.fncls,ad.lid,ad.logo,
+	ad.logo2x,ad.logoAndroidS,ad.logoAndroidH,ad.cm,ad.url,ad.g))
 ```
 
 ## Removal of columns with constant values
 To get a quick idea of the data, a possible way is to get the number of unique values for each column
 ```{r}
-print(rapply(by2olak_data,function(x)length(unique(x))))
+rapply(by2olak_data,function(x)length(unique(x)))
 ```
 
 Unique values in rd.img column 
 ```{r}
-print(unique(by2olak_data['rd.img']))
+unique(by2olak_data['rd.img'])
 ```
 It is obvious that NA corresponds to no image which simply can be false.
+
 ```{r}
 by2olak_data <- by2olak_data %>% mutate(rd.img = ifelse(is.na(rd.img),FALSE,rd.img))
 ```
 
 Unique values in rd.cl column 
 ```{r}
-print(unique(by2olak_data['rd.cl']))
+unique(by2olak_data['rd.cl'])
 ```
 There is only one value so the column can be removed.
 ```{r}
@@ -50,25 +56,26 @@ by2olak_data <- subset( by2olak_data, select = -rd.cl)
 
 Unique values in rd.rp.type column
 ```{r}
-print(unique(by2olak_data['rd.rp.type']))
+unique(by2olak_data['rd.rp.type'])
 ```
 Same thing like rd.cl, there is only one value which is zero so it can be removed.
 ```{r}
-by2olak_data <- subset( by2olak_data, select = -rd.rp.type)
+by2olak_data <- subset(by2olak_data, select = -rd.rp.type)
 ```
 
 ## Working with NAs
 
 The Date is a little bit better than before
-```{r}
-head(by2olak_data)
+```{r, eval=F}
+glimpse(by2olak_data)
 ```
-The 2 columns rd.rp.fullnm & rd.rp.nm are similar from the values of the 2 columns as one is the username and the other is the full name of the user which is not very useful		
+The 2 columns rd.rp.fullnm & rd.rp.nm are similar from the values of the 2 columns as one is the username
+ and the other is the full name of the user which is not very useful		
 
 We can check the number of NAs in each of them
 ```{r}
-print(sum(is.na(by2olak_data['rd.rp.fullnm'])))
-print(sum(is.na(by2olak_data['rd.rp.nm'])))
+sum(is.na(by2olak_data['rd.rp.fullnm']))
+sum(is.na(by2olak_data['rd.rp.nm']))
 ```
 It is possible to remove rd.rp.fullnm as it has a lot of NAs and the column does not provide any additional information
 ```{r}
@@ -76,13 +83,14 @@ by2olak_data <- subset( by2olak_data, select = -rd.rp.fullnm)
 ```
 At this point, it is useful to see the number of NAs in each column:
 ```{r}
-print(rapply(by2olak_data,function(x)sum(is.na(x))))
+rapply(by2olak_data,function(x)sum(is.na(x)))
 ```
 A lot of NAs are there in rd.rp.rpImg & rd.rp.img so we can add a default value for these NAs
 ```{r}
-print(rapply(by2olak_data,function(x)sum(x == 0 | is.na(x))))
+rapply(by2olak_data,function(x)sum(x == 0 | is.na(x)))
 ```
-Since the number is the same for NAs and for NAs or zeros. We can conclude there are no zero values so it can be used as a default value
+Since the number is the same for NAs and for NAs or zeros. We can conclude there are no zero values
+ so it can be used as a default value
 ```{r}
 by2olak_data <- by2olak_data %>% mutate(rd.rp.rpImg = ifelse(is.na(rd.rp.rpImg),0,rd.rp.rpImg))
 by2olak_data <- by2olak_data %>% mutate(rd.rp.img = ifelse(is.na(rd.rp.img),0,rd.rp.img))
@@ -90,12 +98,12 @@ by2olak_data <- by2olak_data %>% mutate(rd.rp.img = ifelse(is.na(rd.rp.img),0,rd
 
 Let's see now the number of NAs in each column after cleaning the data.
 ```{r}
-print(rapply(by2olak_data,function(x)sum(is.na(x))))
+rapply(by2olak_data,function(x)sum(is.na(x)))
 ```
 There are still Columns with NAs, the rd.rp.stid with NAs is actually comments or questioning info for the road.
 A value should be given for such a scenario, let's have a look at the values of this column
 ```{r}
-print(table(by2olak_data['rd.rp.stid']))
+table(by2olak_data['rd.rp.stid'])
 ```
 11 for example is a possible value to be used as they are all from 1 to 10.
 ```{r}
@@ -104,7 +112,7 @@ by2olak_data$rd.rp.stid[is.na(by2olak_data$rd.rp.stid)] <- 11
 
 The NAs for the columns after adjustments
 ```{r}
-print(rapply(by2olak_data,function(x)sum(is.na(x))))
+rapply(by2olak_data,function(x)sum(is.na(x)))
 ```
 
 For hours and mins of road rd.hr & rd.mn, their NAs can be removed as they are 1507 from all rows, which can be neglected.
@@ -115,7 +123,47 @@ by2olak_data <- by2olak_data[!is.na(by2olak_data$rd.mn),]
 Now the only column which contains NAs is rd.stid
 
 
+## Formatting the Crawl Date
+The  crawl_date is the date when this data was crawled in UTC which is 2 hours behind Cairo time), 
+The crawl date will be adjusted to be synchronized with Cairo time (GMT+2)
+
+In the R code it will be GMT-2 as the time was behind by 2 hours (-2)
+```{r}
+by2olak_data$crawl_date <- strptime(by2olak_data$crawl_date, format = "%a %b %d %X UTC %Y", tz = "UTC") %>% as.POSIXct()
+by2olak_data$crawl_date <- format(by2olak_data$crawl_date , "%d-%m-%Y-%H-%M-%S", tz="Etc/GMT-2")
+head(by2olak_data$crawl_date)
+```
+
 ## Additional Columns for adding features
+
+Create columns that split the road name into 2: 
+
+First, Create a duplicate column which will be splited into 2 
+```{r}
+by2olak_data$rd.nm2 <- by2olak_data$rd.nm
+```
+Now split the column into 2 columns in which one is the road header and the other one is the path_taken
+```{r, warning=FALSE}
+by2olak_data <- by2olak_data %>% separate(rd.nm2, c("rd.header", "rd.path_taken"), ";")  
+```
+
+Now let's split the rd.path_taken into 2 columns from and to columns
+```{r}
+by2olak_data <- by2olak_data %>% separate(rd.path_taken, c("rd.start", "rd.destination"), " To ")  
+```
+
+Let's see the NAs in the new columns
+```{r}
+sum(is.na(by2olak_data['rd.header']))
+sum(is.na(by2olak_data['rd.start']))
+sum(is.na(by2olak_data['rd.destination']))
+```
+There are NAs in rd.start and rd.destination as some roads have only header. Default values should replace the NAs.
+```{r}
+by2olak_data$rd.start[is.na(by2olak_data$rd.start)] <- "NONE"
+by2olak_data$rd.destination[is.na(by2olak_data$rd.destination)] <- "NONE"
+```
+
 
 Create a column to show the reports origin : GPS or Users (boolean)
 ```{r}
@@ -125,4 +173,27 @@ by2olak_data['gps'] <- (by2olak_data['rd.rp.nm'] == "bey2ollakgps")
 Create a column to show if the reports are from Annonnoumous Users.
 ```{r}
 by2olak_data['anonymous'] <- (by2olak_data['rd.rp.nm'] == "fa3el kheir")
+```
+
+## Reordering columns
+```{r}
+colnames(by2olak_data)
+```
+
+The columns are not in order anymore, it can be fixed by specifying the order we want.
+```{r}
+by2olak_data <- subset(by2olak_data, select=c(crawl_date,rd.nm,rd.header,rd.start,rd.destination,rd.ri,
+	rd.stid,rd.hr,rd.mn,rd.new,rd.img,rd.strq,rd.cmrq,rd.rp.nm,gps,anonymous,rd.rp.hr,
+	rd.rp.mn,rd.rp.stid,rd.rp.cm,rd.rp.cmid,rd.rp.rpImg,rd.rp.img))
+colnames(by2olak_data)
+```
+
+## Renaming the columns to give them a proper meaning
+```{r , result="hide"}
+rename(by2olak_data, c("rd.nm"="road_name", "rd.ri"="road_route_id","rd.stid"="road_status_id",
+ "rd.hr"="road_update_hours_ago","rd.mn"="road_update_mins_ago", "rd.new"="road_new","rd.nm"="road_name",
+ "rd.img"="road_image","rd.strq"="road_status_request", "rd.cmrq"="road_comment_request",
+ "rd.rp.nm"="report_username", "rd.rp.hr"="report_update_hours_ago", "rd.rp.mn"="report_update_mins_ago",
+ "rd.rp.stid"="report_status_id" , "rd.rp.cm"="report_comment", "rd.rp.cmid"="report_comment_id" ,
+ "rd.rp.rpImg"="report_roadimage" , "rd.rp.img"="report_username_image"))
 ```
