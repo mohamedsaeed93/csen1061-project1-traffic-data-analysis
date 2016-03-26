@@ -11,7 +11,7 @@ library(tidyr)
 library(knitr)
 ```
 
-# Data Processing
+# Data Processing : identify metrics and dimensions
 
 ##First of all importing the data into R
 
@@ -35,7 +35,7 @@ To get a quick idea of the data, a possible way is to get the number of unique v
 rapply(by2olak_data,function(x)length(unique(x)))
 ```
 
-Unique values in rd.img column 
+### Unique values in rd.img column 
 ```{r}
 unique(by2olak_data['rd.img'])
 ```
@@ -45,7 +45,7 @@ It is obvious that NA corresponds to no image which simply can be false.
 by2olak_data <- by2olak_data %>% mutate(rd.img = ifelse(is.na(rd.img),FALSE,rd.img))
 ```
 
-Unique values in rd.cl column 
+### Unique values in rd.cl column 
 ```{r}
 unique(by2olak_data['rd.cl'])
 ```
@@ -54,7 +54,7 @@ There is only one value so the column can be removed.
 by2olak_data <- subset( by2olak_data, select = -rd.cl)
 ```
 
-Unique values in rd.rp.type column
+### Unique values in rd.rp.type column
 ```{r}
 unique(by2olak_data['rd.rp.type'])
 ```
@@ -121,17 +121,48 @@ by2olak_data <- by2olak_data[!is.na(by2olak_data$rd.hr),]
 by2olak_data <- by2olak_data[!is.na(by2olak_data$rd.mn),]
 ```
 Now the only column which contains NAs is rd.stid
-
+```{r}
+sum(is.na(by2olak_data['rd.stid']))
+```
+It can be omited as there are the last rows with NAs and they are around 6% of the whole data
+```{r}
+by2olak_data <- na.omit(by2olak_data)
+```
+Now all the columns have no NAs as a value 
+```{r}
+rapply(by2olak_data,function(x)sum(is.na(x)))
+```
 
 ## Formatting the Crawl Date
+
+To extract the day itself from data (Sun, Tue, etc.)
+```{r}
+by2olak_data$day <- gsub("([A-Za-z]+).*", "\\1", by2olak_data$crawl_date)
+head(by2olak_data$day)
+```
 The  crawl_date is the date when this data was crawled in UTC which is 2 hours behind Cairo time), 
 The crawl date will be adjusted to be synchronized with Cairo time (GMT+2)
 
 In the R code it will be GMT-2 as the time was behind by 2 hours (-2)
 ```{r}
 by2olak_data$crawl_date <- strptime(by2olak_data$crawl_date, format = "%a %b %d %X UTC %Y", tz = "UTC") %>% as.POSIXct()
-by2olak_data$crawl_date <- format(by2olak_data$crawl_date , "%d-%m-%Y-%H-%M-%S", tz="Etc/GMT-2")
+by2olak_data$crawl_date <- format(by2olak_data$crawl_date , "%Y-%m-%d-%H-%M-%S", tz="Etc/GMT-2")
 head(by2olak_data$crawl_date)
+```
+
+To extract the day itself from data (Sun, Tue, etc.)
+```{r}
+by2olak_data <- by2olak_data %>% mutate(day = weekdays(as.Date(by2olak_data$crawl_date)))
+head(by2olak_data$day)
+```
+
+Since the Crawl day is not necessarily the day of the report, calculation of the actual day should be done.
+```{r}
+by2olak_data <- by2olak_data %>% mutate(actual_day = 
+	ifelse(by2olak_data$rd.hr < 24, weekdays(as.Date(by2olak_data$crawl_date)),
+		ifelse(by2olak_data$rd.hr >= 24 & by2olak_data$rd.hr<= 48,weekdays(as.Date(by2olak_data$crawl_date)+1),
+		weekdays(as.Date(by2olak_data$crawl_date)+2))))
+head(by2olak_data[,c('day','actual_day','rd.hr')])
 ```
 
 ## Additional Columns for adding features
@@ -182,7 +213,7 @@ colnames(by2olak_data)
 
 The columns are not in order anymore, it can be fixed by specifying the order we want.
 ```{r}
-by2olak_data <- subset(by2olak_data, select=c(crawl_date,rd.nm,rd.header,rd.start,rd.destination,rd.ri,
+by2olak_data <- subset(by2olak_data, select=c(day,actual_day,crawl_date,rd.nm,rd.header,rd.start,rd.destination,rd.ri,
 	rd.stid,rd.hr,rd.mn,rd.new,rd.img,rd.strq,rd.cmrq,rd.rp.nm,gps,anonymous,rd.rp.hr,
 	rd.rp.mn,rd.rp.stid,rd.rp.cm,rd.rp.cmid,rd.rp.rpImg,rd.rp.img))
 colnames(by2olak_data)
@@ -198,3 +229,18 @@ by2olak_data <- rename(by2olak_data, c("rd.nm"="road_name", "rd.ri"="road_route_
  "rd.rp.rpImg"="report_roadimage" , "rd.rp.img"="report_username_image"))
 colnames(by2olak_data)
 ```
+
+# Descriptive Statistics to investigate the metrics and dimensions.
+
+## Summary Statistics
+
+## Data Visualization
+  
+## Commentary
+
+
+# Inferential Data Analysis
+
+## Parameter Inference (confidence intervals)
+
+## Hypothesis Testing (null hypothesis testing)
