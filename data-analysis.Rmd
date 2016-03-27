@@ -7,6 +7,7 @@ output: html_document
 library(ggplot2)
 library(dplyr)
 library(reshape)
+library(reshape2)
 library(tidyr)
 library(knitr)
 ```
@@ -17,10 +18,7 @@ library(knitr)
 
 ```{r}
 by2olak_data = read.csv("all-semi-unique.csv")
-```
-
-```{r, eval=F}
-glimpse(by2olak_data)
+str(lapply(by2olak_data, unique), vec.len = 4)
 ```
 ## Removal of all the columns related to advertisements
 
@@ -150,7 +148,7 @@ by2olak_data$crawl_date <- format(by2olak_data$crawl_date , "%Y-%m-%d-%H-%M-%S",
 head(by2olak_data$crawl_date)
 ```
 
-To extract the day itself from data (Sun, Tue, etc.)
+To modify the day to be Sunday, Tuesday instead of Sun,Tue, etc.
 ```{r}
 by2olak_data <- by2olak_data %>% mutate(day = weekdays(as.Date(by2olak_data$crawl_date)))
 head(by2olak_data$day)
@@ -175,24 +173,24 @@ by2olak_data$rd.nm2 <- by2olak_data$rd.nm
 ```
 Now split the column into 2 columns in which one is the road header and the other one is the path_taken
 ```{r, warning=FALSE}
-by2olak_data <- by2olak_data %>% separate(rd.nm2, c("rd.header", "rd.path_taken"), ";")  
+by2olak_data <- by2olak_data %>% separate(rd.nm2, c("road.header", "road.path_taken"), ";")  
 ```
 
-Now let's split the rd.path_taken into 2 columns from and to columns
+Now let's split the road.path_taken into 2 columns from and to columns
 ```{r}
-by2olak_data <- by2olak_data %>% separate(rd.path_taken, c("rd.start", "rd.destination"), " To ")  
+by2olak_data <- by2olak_data %>% separate(road.path_taken, c("road.start", "road.destination"), " To ")  
 ```
 
 Let's see the NAs in the new columns
 ```{r}
-sum(is.na(by2olak_data['rd.header']))
-sum(is.na(by2olak_data['rd.start']))
-sum(is.na(by2olak_data['rd.destination']))
+sum(is.na(by2olak_data['road.header']))
+sum(is.na(by2olak_data['road.start']))
+sum(is.na(by2olak_data['road.destination']))
 ```
-There are NAs in rd.start and rd.destination as some roads have only header. Default values should replace the NAs.
+There are NAs in road.start and road.destination as some roads have only header. Default values should replace the NAs.
 ```{r}
-by2olak_data$rd.start[is.na(by2olak_data$rd.start)] <- "NONE"
-by2olak_data$rd.destination[is.na(by2olak_data$rd.destination)] <- "NONE"
+by2olak_data$road.start[is.na(by2olak_data$road.start)] <- "NONE"
+by2olak_data$road.destination[is.na(by2olak_data$road.destination)] <- "NONE"
 ```
 
 
@@ -213,7 +211,7 @@ colnames(by2olak_data)
 
 The columns are not in order anymore, it can be fixed by specifying the order we want.
 ```{r}
-by2olak_data <- subset(by2olak_data, select=c(day,actual_day,crawl_date,rd.nm,rd.header,rd.start,rd.destination,rd.ri,
+by2olak_data <- subset(by2olak_data, select=c(day,actual_day,crawl_date,rd.nm,road.header,road.start,road.destination,rd.ri,
 	rd.stid,rd.hr,rd.mn,rd.new,rd.img,rd.strq,rd.cmrq,rd.rp.nm,gps,anonymous,rd.rp.hr,
 	rd.rp.mn,rd.rp.stid,rd.rp.cm,rd.rp.cmid,rd.rp.rpImg,rd.rp.img))
 colnames(by2olak_data)
@@ -222,7 +220,7 @@ colnames(by2olak_data)
 ## Renaming the columns to give them a proper meaning
 ```{r}
 by2olak_data <- rename(by2olak_data, c("rd.nm"="road_name", "rd.ri"="road_route_id","rd.stid"="road_status_id",
- "rd.hr"="road_update_hours_ago","rd.mn"="road_update_mins_ago", "rd.new"="road_new","rd.nm"="road_name",
+ "rd.hr"="road_update_hours_ago","rd.mn"="road_update_mins_ago", "rd.new"="road_new",
  "rd.img"="road_image","rd.strq"="road_status_request", "rd.cmrq"="road_comment_request",
  "rd.rp.nm"="report_username", "rd.rp.hr"="report_update_hours_ago", "rd.rp.mn"="report_update_mins_ago",
  "rd.rp.stid"="report_status_id" , "rd.rp.cm"="report_comment", "rd.rp.cmid"="report_comment_id" ,
@@ -235,9 +233,69 @@ colnames(by2olak_data)
 ## Summary Statistics
 
 ## Data Visualization
-  
-## Commentary
+```{r, message = FALSE}
+data_plot <- melt(subset(by2olak_data, select=c(road_status_id,report_status_id,road_update_hours_ago,road_update_mins_ago,report_update_hours_ago,report_update_mins_ago)))
+ggplot(data_plot,aes(x = value)) + 
+    facet_wrap(~variable,scales = "free_x") + 
+    geom_histogram()
+```
 
+```{r, message = FALSE}
+ggplot(data=by2olak_data, aes(by2olak_data$road_status_id)) + geom_histogram()
+ggplot(data=by2olak_data, aes(by2olak_data$report_status_id)) + geom_histogram()
+
+qplot(as.factor(anonymous), data = by2olak_data)
+qplot(as.factor(gps), data = by2olak_data)
+
+qplot(road_route_id, road_status_id, data = by2olak_data, col=actual_day)
+
+ggplot(data = melt(subset(by2olak_data, select=c(road_route_id))), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable))
+ggplot(data = melt(subset(by2olak_data, select=c(road_status_id, report_status_id))), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable))
+# ggplot(data = melt(subset(by2olak_data, select=-c(day, actual_day, crawl_date, road.header, road.start, road.destination, gps, anonymous,road_name,report_username, report_comment))), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable))
+
+plot(table(by2olak_data['road_status_id']))
+plot(table(by2olak_data['report_status_id']))
+
+```
+
+```{r, message = FALSE}
+ggplot(by2olak_data[by2olak_data$road_status_id <= 5,] , aes(road_route_id, road_status_id, col = actual_day)) +
+  geom_point(alpha = .6) +
+  stat_smooth(se = FALSE, size = 1.5, span = .2) +
+  scale_x_continuous("road route") +
+  scale_y_continuous("road status") +
+  scale_color_discrete("Day of Week")
+```
+
+```{r, message = FALSE}
+ggplot(by2olak_data, aes(road_status_id, group=gps)) + 
+    geom_histogram(aes(colour=gps, fill=gps), binwidth=1, alpha=0.9) +
+    xlab("Roads Status") + ylab("Count") + ggtitle("Roads Status by bey2ollakgps")
+
+ggplot(by2olak_data, aes(report_status_id, group=gps)) + 
+    geom_histogram(aes(colour=gps, fill=gps), binwidth=1, alpha=0.9) +
+    xlab("Reports Status") + ylab("Count") + ggtitle("Reports Status by bey2ollakgps")
+
+ggplot(by2olak_data, aes(report_status_id, group=road_status_id)) + 
+     geom_histogram(aes(colour=road_status_id, fill=road_status_id), binwidth=1, alpha=0.9) +
+     xlab("Reports Status") + ylab("Count") + ggtitle("Reports Status by Road Status")
+```
+
+```{r, message = FALSE}
+ data_plot <- subset(by2olak_data, select=c(actual_day,road_status_id,report_status_id,
+road_update_hours_ago,road_update_mins_ago,report_update_hours_ago,report_update_mins_ago))
+
+ggplot(filter(data_plot), aes(x= actual_day, y= road_update_hours_ago )) + 
+     geom_boxplot(aes(fill = actual_day)) +
+     stat_summary(fun.y=mean, geom="point", shape=23, size=4) + 
+     ggtitle("hours since last update")
+ ggplot(filter(data_plot), aes(x= actual_day, y= report_update_hours_ago )) + 
+     geom_boxplot(aes(fill = actual_day)) +
+     stat_summary(fun.y=mean, geom="point", shape=23, size=4) + 
+     ggtitle("hours since last update")
+```
+
+## Commentary
 
 # Inferential Data Analysis
 
