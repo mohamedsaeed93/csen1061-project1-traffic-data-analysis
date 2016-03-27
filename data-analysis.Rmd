@@ -228,6 +228,10 @@ by2olak_data <- rename(by2olak_data, c("rd.nm"="road_name", "rd.ri"="road_route_
 colnames(by2olak_data)
 ```
 
+Here is the summary after cleaning the data
+```{r}
+summary(by2olak_data)
+```
 # Descriptive Statistics to investigate the metrics and dimensions.
 
 ## Summary Statistics
@@ -293,6 +297,11 @@ ggplot(filter(data_plot), aes(x= actual_day, y= road_update_hours_ago )) +
      geom_boxplot(aes(fill = actual_day)) +
      stat_summary(fun.y=mean, geom="point", shape=23, size=4) + 
      ggtitle("hours since last update")
+```
+
+```{r}
+pie(table(by2olak_data$report_status_id))
+pie(table(by2olak_data$road_status_id))
 ```
 
 ## Commentary
