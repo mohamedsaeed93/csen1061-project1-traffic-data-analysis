@@ -65,7 +65,7 @@ by2olak_data <- subset(by2olak_data, select = -rd.rp.type)
 ## Working with NAs
 
 The Date is a little bit better than before
-```{r, eval=F}
+```{r}
 glimpse(by2olak_data)
 ```
 The 2 columns rd.rp.fullnm & rd.rp.nm are similar from the values of the 2 columns as one is the username
@@ -104,9 +104,9 @@ A value should be given for such a scenario, let's have a look at the values of 
 ```{r}
 table(by2olak_data['rd.rp.stid'])
 ```
-11 for example is a possible value to be used as they are all from 1 to 10.
+0 for example is a possible value to be used as they are all from 1 to 10.
 ```{r}
-by2olak_data$rd.rp.stid[is.na(by2olak_data$rd.rp.stid)] <- 11
+by2olak_data$rd.rp.stid[is.na(by2olak_data$rd.rp.stid)] <- 0
 ```
 
 The NAs for the columns after adjustments
@@ -161,7 +161,8 @@ by2olak_data <- by2olak_data %>% mutate(actual_day =
 	ifelse(by2olak_data$rd.hr < 24, weekdays(as.Date(by2olak_data$crawl_date)),
 		ifelse(by2olak_data$rd.hr >= 24 & by2olak_data$rd.hr<= 48,weekdays(as.Date(by2olak_data$crawl_date)+1),
 		weekdays(as.Date(by2olak_data$crawl_date)+2))))
-head(by2olak_data[,c('day','actual_day','rd.hr')])
+data_sample <- by2olak_data[sample(nrow(by2olak_data), 10), ]
+kable(data_sample[,c('day','actual_day','rd.hr')])
 ```
 
 ## Additional Columns for adding features
@@ -230,56 +231,94 @@ colnames(by2olak_data)
 ```
 
 Here is the summary after cleaning the data
-```{r}
-kable(summary(by2olak_data))
+```{r,eval=F}
+summary(by2olak_data)
 ```
 # Descriptive Statistics to investigate the metrics and dimensions.
 
 ## Summary Statistics
+
+### Envolvement of Users in the reports :
+There are two types of reports (reports by users and automated ones). For the reports submitted by users,
+the user can report as "fa3el kheir" which becomes anonymous to by2ollak.
+
+Here are the numbers or automated reports, anonymous ones and finally reports in which the reporter is not anonymous. 
 ```{r}
 nrow(by2olak_data[by2olak_data$gps,])   
 nrow(by2olak_data[by2olak_data$anonymous,])  
 nrow(by2olak_data[by2olak_data$anonymous == FALSE & by2olak_data$gps== FALSE,]) 
+```
+### Measures of central tendency and spread
+At this point, It is known that the status of by2ollak is organised as follows
+```{r, echo=FALSE}
+status_id <- c(1,2,3,4,5,6,7,8,9,10)
+meaning <- c("7alawa", "lazeez", "mashy", "za7ma","mafesh amal","so2al","khatar","7adsa","3otl","ba2ollak eh")
+by2ollak_status <- data.frame(status_id, meaning)
+kable(by2ollak_status)
+```
 
+So for our analysis, it is better to filter the data with status > 5, as the focus is the traffic status for now.
+```{r}
+by2olak_data_proper_status <- by2olak_data[by2olak_data$road_status_id <= 5,]
+by2olak_data_proper_status <- by2olak_data_proper_status[by2olak_data_proper_status$report_status_id <= 5,]
+```
 
+Roads status for each day
+```{r}
+filtered_data <- count(by2olak_data_proper_status, c("actual_day", "road_status_id"))
+kable(filtered_data [with(filtered_data , order(road_status_id, desc(freq))),])
+```
+
+Districts with highest requests.
+```{r}
+filtered_data <- count(by2olak_data_proper_status, c("road_header"))
+kable(filtered_data [with(filtered_data , order(desc(freq))),])
+```
+
+Now let's calculate the mean, median and mode for the important columns which are the road_status_id,
+report_status_id, road_update_hours_ago and report_update_hours_ago
+
+First let's implement the function that will compute the mode as it is not implemented in R
+```{r}
 estimate_mode <- function(x) {
     d <- density(x)
      d$x[which.max(d$y)]
  }
+```
 
-by2olak_data_proper_status <- by2olak_data[by2olak_data$road_status_id <= 5,]
-by2olak_data_proper_status <- by2olak_data_proper_status[by2olak_data_proper_status$road_status_id <= 5,]
-
+#### Road Status Id
+```{r}
 mean(by2olak_data_proper_status$road_status_id)
-mean(by2olak_data_proper_status$report_status_id)
-mean(by2olak_data_proper_status$road_update_hours_ago)
-mean(by2olak_data_proper_status$report_update_hours_ago)
-
 median(by2olak_data_proper_status$road_status_id)
-median(by2olak_data_proper_status$report_status_id)
-median(by2olak_data_proper_status$road_update_hours_ago)
-median(by2olak_data_proper_status$report_update_hours_ago)
-
-estimate_mode(by2olak_data$road_status_id)
-estimate_mode(by2olak_data$report_status_id)
-estimate_mode(by2olak_data$road_update_hours_ago)
-estimate_mode(by2olak_data$report_update_hours_ago)
-
+estimate_mode(by2olak_data_proper_status$road_status_id)
 sd(by2olak_data_proper_status$road_status_id)
-sd(by2olak_data_proper_status$report_status_id)
-sd(by2olak_data_proper_status$road_update_hours_ago)
-sd(by2olak_data_proper_status$report_update_hours_ago)
-
 var(by2olak_data_proper_status$road_status_id)
+```
+#### Report Status Id
+```{r}
+mean(by2olak_data_proper_status$report_status_id)
+median(by2olak_data_proper_status$report_status_id)
+estimate_mode(by2olak_data_proper_status$report_status_id)
+sd(by2olak_data_proper_status$report_status_id)
 var(by2olak_data_proper_status$report_status_id)
+```
+
+#### Road Update Hours ago
+```{r}
+mean(by2olak_data_proper_status$road_update_hours_ago)
+median(by2olak_data_proper_status$road_update_hours_ago)
+estimate_mode(by2olak_data_proper_status$road_update_hours_ago)
+sd(by2olak_data_proper_status$road_update_hours_ago)
 var(by2olak_data_proper_status$road_update_hours_ago)
+```
+
+#### Report Update Hours ago
+```{r}
+mean(by2olak_data_proper_status$report_update_hours_ago)
+median(by2olak_data_proper_status$report_update_hours_ago)
+estimate_mode(by2olak_data_proper_status$report_update_hours_ago)
+sd(by2olak_data_proper_status$report_update_hours_ago)
 var(by2olak_data_proper_status$report_update_hours_ago)
-
-filtered_data <- count(by2olak_data_proper_status, c("actual_day", "road_status_id"))
-kable(filtered_data [with(filtered_data , order(road_status_id, desc(freq))),])
-
-filtered_data <- count(by2olak_data_proper_status, c("road_header"))
-kable(filtered_data [with(filtered_data , order(desc(freq))),])
 ```
 
 ## Data Visualization
@@ -291,25 +330,19 @@ ggplot(data_plot,aes(x = value)) +
 ```
 
 ```{r, message = FALSE}
-ggplot(data=by2olak_data, aes(by2olak_data$road_status_id)) + geom_histogram()
-ggplot(data=by2olak_data, aes(by2olak_data$report_status_id)) + geom_histogram()
-
 qplot(as.factor(anonymous), data = by2olak_data)
 qplot(as.factor(gps), data = by2olak_data)
 
-qplot(road_route_id, road_status_id, data = by2olak_data, col=actual_day)
-
-ggplot(data = melt(subset(by2olak_data, select=c(road_route_id))), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable))
 ggplot(data = melt(subset(by2olak_data, select=c(road_status_id, report_status_id))), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable))
-# ggplot(data = melt(subset(by2olak_data, select=-c(day, actual_day, crawl_date, road.header, road.start, road.destination, gps, anonymous,road_name,report_username, report_comment))), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable))
+ggplot(data = melt(subset(by2olak_data_proper_status, select=c(road_status_id, report_status_id))), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable))
 
-plot(table(by2olak_data['road_status_id']))
-plot(factor(table(by2olak_data['road_status_id'])))
-barplot(table(by2olak_data['road_status_id']), main = "barplot")
-plot(table(by2olak_data['report_status_id']))
-plot(factor(table(by2olak_data['report_status_id'])))
-barplot(table(by2olak_data['report_status_id']), main = "barplot")
+ggplot(by2olak_data, aes(road_status_id)) + 
+     geom_histogram(binwidth=1, alpha=0.9) +
+     xlab("Roads Status") + ylab("Count") + ggtitle("Road Status Values Distribution")
 
+ggplot(by2olak_data, aes(report_status_id)) + 
+     geom_histogram(binwidth=1, alpha=0.9) +
+     xlab("Roads Status") + ylab("Count") + ggtitle("Report Status Values Distribution")
 ```
 
 ```{r, message = FALSE}
@@ -322,23 +355,6 @@ ggplot(by2olak_data[by2olak_data$road_status_id <= 5,] , aes(road_route_id, road
 ```
 
 ```{r, message = FALSE}
-ggplot(by2olak_data, aes(road_status_id, group=gps)) + 
-    geom_histogram(aes(colour=gps, fill=gps), binwidth=1, alpha=0.9) +
-    xlab("Roads Status") + ylab("Count") + ggtitle("Roads Status by bey2ollakgps")
-
-ggplot(by2olak_data, aes(report_status_id, group=gps)) + 
-    geom_histogram(aes(colour=gps, fill=gps), binwidth=1, alpha=0.9) +
-    xlab("Reports Status") + ylab("Count") + ggtitle("Reports Status by bey2ollakgps")
-
-ggplot(by2olak_data, aes(road_status_id, group=anonymous)) + 
-    geom_histogram(aes(colour=anonymous, fill=anonymous), binwidth=1, alpha=0.9) +
-    xlab("Roads Status") + ylab("Count") + ggtitle("Roads Status by fa3el kheir")
-
-ggplot(by2olak_data, aes(report_status_id, group=anonymous)) + 
-    geom_histogram(aes(colour=anonymous, fill=anonymous), binwidth=1, alpha=0.9) +
-    xlab("Reports Status") + ylab("Count") + ggtitle("Reports Status by fa3el kheir")
-
-
 ggplot(by2olak_data, aes(report_status_id, group=road_status_id)) + 
      geom_histogram(aes(colour=road_status_id, fill=road_status_id), binwidth=1, alpha=0.9) +
      xlab("Reports Status") + ylab("Count") + ggtitle("Reports Status by Road Status")
