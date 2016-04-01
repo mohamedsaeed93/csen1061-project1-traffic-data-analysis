@@ -248,6 +248,10 @@ nrow(by2olak_data[by2olak_data$gps,])
 nrow(by2olak_data[by2olak_data$anonymous,])  
 nrow(by2olak_data[by2olak_data$anonymous == FALSE & by2olak_data$gps== FALSE,]) 
 ```
+For the above results, it is clear that the reports from users are a lot more that the automated ones, although
+there is a portion of users that report anonymously.
+
+
 ### Measures of central tendency and spread
 At this point, It is known that the status of by2ollak is organised as follows
 ```{r, echo=FALSE}
@@ -286,6 +290,17 @@ estimate_mode <- function(x) {
  }
 ```
 
+#### Mean - Median - Mode
+are all ways to describe the average or the central point of the data
+
+#### Standard deviation
+expresses by how much the values differ from the mean value(there is the 68–95–99.7 rule) which
+is a shorthand to remember the percentage of values that lie within a band around the mean in a normal distribution with
+a width of one, two and three standard deviations, respectively; more accurately, 68.27%, 95.45% and 99.73% of the value
+
+#### Variance
+shows how the data is different, divergent, or inconsistent.
+
 #### Road Status Id
 ```{r}
 mean(by2olak_data_proper_status$road_status_id)
@@ -294,6 +309,7 @@ estimate_mode(by2olak_data_proper_status$road_status_id)
 sd(by2olak_data_proper_status$road_status_id)
 var(by2olak_data_proper_status$road_status_id)
 ```
+
 #### Report Status Id
 ```{r}
 mean(by2olak_data_proper_status$report_status_id)
@@ -301,6 +317,13 @@ median(by2olak_data_proper_status$report_status_id)
 estimate_mode(by2olak_data_proper_status$report_status_id)
 sd(by2olak_data_proper_status$report_status_id)
 var(by2olak_data_proper_status$report_status_id)
+```
+It is clear that the median of road status id and report status id are equal, this is due to the fact that the road status
+id is actually calculated based on the reports status ids for the road at the time of the request, so the road status id
+and the report status id are positively correlated.
+
+```{r}
+cor(by2olak_data[c("road_status_id","report_status_id")]) 
 ```
 
 #### Road Update Hours ago
@@ -311,6 +334,7 @@ estimate_mode(by2olak_data_proper_status$road_update_hours_ago)
 sd(by2olak_data_proper_status$road_update_hours_ago)
 var(by2olak_data_proper_status$road_update_hours_ago)
 ```
+All the values approach zero which indicates that the status of the roads are updated regularly. 
 
 #### Report Update Hours ago
 ```{r}
@@ -320,21 +344,32 @@ estimate_mode(by2olak_data_proper_status$report_update_hours_ago)
 sd(by2olak_data_proper_status$report_update_hours_ago)
 var(by2olak_data_proper_status$report_update_hours_ago)
 ```
+The values are different from the road status and they are not approaching zero which is a result of the inactivity of the
+application users during the day. 
 
 ## Data Visualization
+
+### Histograms of the most important columns 
 ```{r, message = FALSE}
 data_plot <- melt(subset(by2olak_data, select=c(road_status_id,report_status_id,road_update_hours_ago,road_update_mins_ago,report_update_hours_ago,report_update_mins_ago)))
 ggplot(data_plot,aes(x = value)) + 
     facet_wrap(~variable,scales = "free_x") + 
     geom_histogram()
 ```
+The road status id and the report status id histograms are having the same trend as the road status id is calculated base on
+the report status id. For the hours for the road, they are biased towards zero and one as the roads are updated regularly
+while the hours for reports are still in the first half of the graph but they are scattered unlike in case of roads. 
 
 ```{r, message = FALSE}
 qplot(as.factor(anonymous), data = by2olak_data)
 qplot(as.factor(gps), data = by2olak_data)
+```
 
+Most of the users reports with their usernames not anonymously and also the reports are more likely to be reported by users
+but there is still a big portion of reports that are automated based on the GPS in the smart phones.
+
+```{r, message = FALSE}
 ggplot(data = melt(subset(by2olak_data, select=c(road_status_id, report_status_id))), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable))
-ggplot(data = melt(subset(by2olak_data_proper_status, select=c(road_status_id, report_status_id))), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable))
 
 ggplot(by2olak_data, aes(road_status_id)) + 
      geom_histogram(binwidth=1, alpha=0.9) +
@@ -342,8 +377,30 @@ ggplot(by2olak_data, aes(road_status_id)) +
 
 ggplot(by2olak_data, aes(report_status_id)) + 
      geom_histogram(binwidth=1, alpha=0.9) +
-     xlab("Roads Status") + ylab("Count") + ggtitle("Report Status Values Distribution")
+     xlab("Reports Status") + ylab("Count") + ggtitle("Report Status Values Distribution")
 ```
+
+The median is 10 which is equals to the upper quartile, this is due to the fact that there are a lot of questions and inquiries on the road which can be 
+presented by the 2 above plots which show that there are a huge number of reports and road status ids with value 10 which
+corresponds to "b2olak eh".
+
+
+```{r, message = FALSE}
+ggplot(data = melt(subset(by2olak_data_proper_status, select=c(road_status_id, report_status_id))), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable))
+
+ggplot(by2olak_data_proper_status, aes(road_status_id)) + 
+     geom_histogram(binwidth=1, alpha=0.9) +
+     xlab("Roads Status") + ylab("Count") + ggtitle("Road Status Values Distribution")
+
+ggplot(by2olak_data_proper_status, aes(report_status_id)) + 
+     geom_histogram(binwidth=1, alpha=0.9) +
+     xlab("Reports Status") + ylab("Count") + ggtitle("Report Status Values Distribution")
+```
+
+The median is 2 in road and report status id after filtering rows with status ids greater than 5 in both road and
+report status ids, after taking a look at the 2 above plots, it is clear that most of the status ids are equal 2 also from
+the box plot, the ids of value 0 and 5 are cosidered outliers as they are very few.
+
 
 ```{r, message = FALSE}
 ggplot(by2olak_data[by2olak_data$road_status_id <= 5,] , aes(road_route_id, road_status_id, col = actual_day)) +
@@ -358,7 +415,12 @@ ggplot(by2olak_data[by2olak_data$road_status_id <= 5,] , aes(road_route_id, road
 ggplot(by2olak_data, aes(report_status_id, group=road_status_id)) + 
      geom_histogram(aes(colour=road_status_id, fill=road_status_id), binwidth=1, alpha=0.9) +
      xlab("Reports Status") + ylab("Count") + ggtitle("Reports Status by Road Status")
+```
 
+Here are 2 plots that show the road and report status ids with respect to the day of the update to give an intuition of the
+distribution of status ids on each day.
+
+```{r, message = FALSE}
 ggplot(by2olak_data, aes(road_status_id, group=actual_day)) + 
     geom_histogram(aes(colour=actual_day, fill=actual_day), binwidth=1, alpha=0.9) +
     xlab("Roads Status") + ylab("Count") + ggtitle("Roads Status per each day")
@@ -368,8 +430,12 @@ ggplot(by2olak_data, aes(report_status_id, group=actual_day)) +
     xlab("Reports Status") + ylab("Count") + ggtitle("Reports Status per each day")
 ```
 
+Since the roads are updated regularly, the mean is nearly equals to 0 which introduces a lot of outliers. In case of reports
+the data was biased to the first half as we mentioned before which also introduces outliers but less than that of the roads.
+Here, it is shown clearly how the data is distributed and how the outliers are found.
+
 ```{r, message = FALSE}
- data_plot <- subset(by2olak_data, select=c(actual_day,road_status_id,report_status_id,
+data_plot <- subset(by2olak_data, select=c(actual_day,road_status_id,report_status_id,
 road_update_hours_ago,road_update_mins_ago,report_update_hours_ago,report_update_mins_ago))
 
 ggplot(filter(data_plot), aes(x= actual_day, y= road_update_hours_ago )) + 
@@ -382,12 +448,13 @@ ggplot(filter(data_plot), aes(x= actual_day, y= road_update_hours_ago )) +
      ggtitle("hours since last update")
 ```
 
-```{r}
-pie(table(by2olak_data$report_status_id))
-pie(table(by2olak_data$road_status_id))
-```
-
 ## Commentary
+At this point, we can conclude that there are a lot of status ids of value 10 which is a "b2olak eh" which is a question
+or a query, this is one of main problems with this data. After filtering status ids with value greater than 5.
+It was clear that most of the reports on roads and the actual road themselves have a status id of 2 which is "lazeez".
+From the tables above, it is noticed that friday has the least number of status ids for each value which is an indicator
+to the inacitivity of users on this day as it is a holiday and the roads are already "7alawa" which does not require the
+application for information.
 
 # Inferential Data Analysis
 
