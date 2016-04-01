@@ -230,6 +230,11 @@ by2olak_data <- rename(by2olak_data, c("rd.nm"="road_name", "rd.ri"="road_route_
 colnames(by2olak_data)
 ```
 
+## Finally Removal of rows with same comment id
+```{r}
+by2olak_data <- by2olak_data[!duplicated(by2olak_data$report_comment_id),]
+```
+
 Here is the summary after cleaning the data
 ```{r,eval=F}
 summary(by2olak_data)
