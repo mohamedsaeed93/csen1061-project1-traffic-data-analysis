@@ -11,6 +11,7 @@ library(reshape2)
 library(tidyr)
 library(knitr)
 library(plyr)
+library(BSDA)
 ```
 
 # Data Processing : identify metrics and dimensions
@@ -464,5 +465,53 @@ application for information.
 # Inferential Data Analysis
 
 ## Parameter Inference (confidence intervals)
+```{r, message = FALSE}
+hist(by2olak_data_proper_status$road_status_id)
+hist(by2olak_data_proper_status$road_update_hours_ago)
+```
+From the plots, they are not normally distributed, so sample of means is needed to construct a normally distributed data in
+order to be able to get the confidence intervals of theses columns
+
+```{r, message = FALSE}
+N=10000
+road_status_ids_samples_mean=as.vector(N)
+count=1
+for (i in 1:N){
+  road_status_ids_samples_mean[count] <- mean(sample(by2olak_data_proper_status$road_status_id, 1000, replace = TRUE))
+  count=count+1
+}
+mean(road_status_ids_samples_mean)
+sd(road_status_ids_samples_mean)
+hist(road_status_ids_samples_mean)
+```
+
+The distribution of the Sample Mean is normally distributed since the sample size is 1000 which is greater than 36.
+z-test can be used as it is an appropriate test for such scenario to determine and interpret the 95% and 99% confidence interval
+of the population mean.
+
+```{r, message = FALSE}
+z.test(road_status_ids_samples_mean, sigma.x = sd(road_status_ids_samples_mean), conf.level = 0.95)
+
+2*(pnorm(2,mean(road_status_ids_samples_mean),sd(road_status_ids_samples_mean))-0.5)*100 #confidence for specific number
+qnorm((0.95/2)+0.5, 2 ,sd(road_status_ids_samples_mean)) # upper bound
+qnorm((1-0.95)/2, 2 ,sd(road_status_ids_samples_mean)) # lower bound
+
+N=10000
+report_hours_samples_mean=as.vector(N)
+count=1
+for (i in 1:N){
+  report_hours_samples_mean[count] <- mean(sample(by2olak_data_proper_status$report_update_hours_ago, 1000, replace = TRUE))
+  count=count+1
+}
+mean(report_hours_samples_mean)
+sd(report_hours_samples_mean)
+hist(report_hours_samples_mean)
+
+z.test(report_hours_samples_mean, sigma.x = sd(report_hours_samples_mean), conf.level = 0.95)
+
+2*(pnorm(1,mean(report_hours_samples_mean),sd(report_hours_samples_mean))-0.5)*100 #confidence for specific number
+qnorm((0.95/2)+0.5, 1,sd(report_hours_samples_mean)) # upper bound
+qnorm((1-0.95)/2, 1 ,sd(report_hours_samples_mean)) #lower bound
+```
 
 ## Hypothesis Testing (null hypothesis testing)
