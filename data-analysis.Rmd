@@ -32,13 +32,15 @@ by2olak_data = subset(by2olak_data, select=-c(ad.aid,ad.bgcl,ad.bgcls,ad.fncl,ad
 ## Removal of columns with constant values
 To get a quick idea of the data, a possible way is to get the number of unique values for each column
 ```{r}
-rapply(by2olak_data,function(x)length(unique(x)))
+data_view <- as.data.frame(rapply(by2olak_data, function(x) length(unique(x))))
+kable(rename(data_view, c("rapply(by2olak_data, function(x) length(unique(x)))"="Number of Unique Values")))
 ```
 
 ### Unique values in rd.img column 
 ```{r}
-unique(by2olak_data['rd.img'])
+kable(as.data.frame(unique(by2olak_data['rd.img'])))
 ```
+
 It is obvious that NA corresponds to no image which simply can be false.
 
 ```{r}
@@ -50,6 +52,7 @@ by2olak_data <- by2olak_data %>% mutate(rd.img = ifelse(is.na(rd.img),FALSE,rd.i
 unique(by2olak_data['rd.cl'])
 ```
 There is only one value so the column can be removed.
+
 ```{r}
 by2olak_data <- subset( by2olak_data, select = -rd.cl)
 ```
@@ -83,14 +86,21 @@ by2olak_data <- subset( by2olak_data, select = -rd.rp.fullnm)
 ```
 At this point, it is useful to see the number of NAs in each column:
 ```{r}
-rapply(by2olak_data,function(x)sum(is.na(x)))
+data_view <- as.data.frame(rapply(by2olak_data, function(x) sum(is.na(x))))
+kable(rename(data_view, c("rapply(by2olak_data, function(x) sum(is.na(x)))"="Number of NAs")))
 ```
+
 A lot of NAs are there in rd.rp.rpImg & rd.rp.img so we can add a default value for these NAs
+
 ```{r}
-rapply(by2olak_data,function(x)sum(x == 0 | is.na(x)))
+data_view <- as.data.frame(rapply(by2olak_data, function(x) sum(x == 0 | is.na(x))))
+kable(rename(data_view, c("rapply(by2olak_data, function(x) sum(x == 0 | is.na(x)))"="Number of NAs or Zero Values")))
 ```
+
 Since the number is the same for NAs and for NAs or zeros. We can conclude there are no zero values
  so it can be used as a default value
+
+
 ```{r}
 by2olak_data <- by2olak_data %>% mutate(rd.rp.rpImg = ifelse(is.na(rd.rp.rpImg),0,rd.rp.rpImg))
 by2olak_data <- by2olak_data %>% mutate(rd.rp.img = ifelse(is.na(rd.rp.img),0,rd.rp.img))
@@ -98,21 +108,28 @@ by2olak_data <- by2olak_data %>% mutate(rd.rp.img = ifelse(is.na(rd.rp.img),0,rd
 
 Let's see now the number of NAs in each column after cleaning the data.
 ```{r}
-rapply(by2olak_data,function(x)sum(is.na(x)))
+data_view <- as.data.frame(rapply(by2olak_data, function(x) sum(is.na(x))))
+kable(rename(data_view, c("rapply(by2olak_data, function(x) sum(is.na(x)))"="Number of NAs")))
 ```
+
 There are still Columns with NAs, the rd.rp.stid with NAs is actually comments or questioning info for the road.
 A value should be given for such a scenario, let's have a look at the values of this column
+
 ```{r}
-table(by2olak_data['rd.rp.stid'])
+kable(as.data.frame(table(by2olak_data['rd.rp.stid'])))
 ```
+
 0 for example is a possible value to be used as they are all from 1 to 10.
+
 ```{r}
 by2olak_data$rd.rp.stid[is.na(by2olak_data$rd.rp.stid)] <- 0
 ```
 
 The NAs for the columns after adjustments
 ```{r}
-rapply(by2olak_data,function(x)sum(is.na(x)))
+data_view <- as.data.frame(rapply(by2olak_data, function(x) sum(is.na(x))))
+kable(rename(data_view, c("rapply(by2olak_data, function(x) sum(is.na(x)))"="Number of NAs")))
+
 ```
 
 For hours and mins of road rd.hr & rd.mn, their NAs can be removed as they are 1507 from all rows, which can be neglected.
@@ -130,7 +147,8 @@ by2olak_data <- na.omit(by2olak_data)
 ```
 Now all the columns have no NAs as a value 
 ```{r}
-rapply(by2olak_data,function(x)sum(is.na(x)))
+data_view <- as.data.frame(rapply(by2olak_data, function(x) sum(is.na(x))))
+kable(rename(data_view, c("rapply(by2olak_data, function(x) sum(is.na(x)))"="Number of NAs")))
 ```
 
 ## Formatting the Crawl Date
@@ -140,7 +158,7 @@ To extract the day itself from data (Sun, Tue, etc.)
 by2olak_data$day <- gsub("([A-Za-z]+).*", "\\1", by2olak_data$crawl_date)
 head(by2olak_data$day)
 ```
-The  crawl_date is the date when this data was crawled in UTC which is 2 hours behind Cairo time), 
+The crawl_date is the date when this data was crawled in UTC which is 2 hours behind Cairo time), 
 The crawl date will be adjusted to be synchronized with Cairo time (GMT+2)
 
 In the R code it will be GMT-2 as the time was behind by 2 hours (-2)
@@ -168,15 +186,9 @@ kable(data_sample[,c('day','actual_day','rd.hr')])
 
 ## Additional Columns for adding features
 
-Create columns that split the road name into 2: 
-
-First, Create a duplicate column which will be splited into 2 
-```{r}
-by2olak_data$rd.nm2 <- by2olak_data$rd.nm
-```
-Now split the column into 2 columns in which one is the road header and the other one is the path_taken
+Create columns that split the road name into 2 in which one is the road header and the other one is the path_taken
 ```{r, warning=FALSE}
-by2olak_data <- by2olak_data %>% separate(rd.nm2, c("road_header", "road_path_taken"), ";")  
+by2olak_data <- by2olak_data %>% separate(rd.nm, c("road_header", "road_path_taken"), ";")  
 ```
 
 Now let's split the road_path_taken into 2 columns from and to columns
@@ -228,18 +240,23 @@ colnames(by2olak_data)
 
 The columns are not in order anymore, it can be fixed by specifying the order we want.
 ```{r}
-by2olak_data <- subset(by2olak_data, select=c(day,actual_day,time_hours,day_night,crawl_date,rd.nm,road_header,road_start,road_destination,rd.ri,
+by2olak_data <- subset(by2olak_data, select=c(crawl_date,day,actual_day,time_hours,day_night,road_header,road_start,road_destination,rd.ri,
 	rd.stid,rd.hr,rd.mn,rd.new,rd.img,rd.strq,rd.cmrq,rd.rp.nm,gps,anonymous,rd.rp.hr,
 	rd.rp.mn,rd.rp.stid,rd.rp.cm,rd.rp.cmid,rd.rp.rpImg,rd.rp.img))
 colnames(by2olak_data)
 ```
 
+
+## Removal of columns related to by2ollak application for processing and does not affect the data
+
+```{r}
+by2olak_data = subset(by2olak_data, select=-c(rd.new,rd.strq,rd.cmrq))
+```
+
 ## Renaming the columns to give them a proper meaning
 ```{r}
-by2olak_data <- rename(by2olak_data, c("rd.nm"="road_name", "rd.ri"="road_route_id","rd.stid"="road_status_id",
- "rd.hr"="road_update_hours_ago","rd.mn"="road_update_mins_ago", "rd.new"="road_new",
- "rd.img"="road_image","rd.strq"="road_status_request", "rd.cmrq"="road_comment_request",
- "rd.rp.nm"="report_username", "rd.rp.hr"="report_update_hours_ago", "rd.rp.mn"="report_update_mins_ago",
+by2olak_data <- rename(by2olak_data, c("rd.ri"="road_route_id","rd.stid"="road_status_id",
+ "rd.hr"="road_update_hours_ago","rd.mn"="road_update_mins_ago", "rd.img"="road_image", "rd.rp.nm"="report_username", "rd.rp.hr"="report_update_hours_ago", "rd.rp.mn"="report_update_mins_ago",
  "rd.rp.stid"="report_status_id" , "rd.rp.cm"="report_comment", "rd.rp.cmid"="report_comment_id" ,
  "rd.rp.rpImg"="report_roadimage" , "rd.rp.img"="report_username_image"))
 colnames(by2olak_data)
@@ -290,7 +307,7 @@ by2olak_data_proper_status <- by2olak_data_proper_status[by2olak_data_proper_sta
 ###Roads status for each day from 1 to 5 in order
 ```{r}
 filtered_data <- count(by2olak_data_proper_status, c("actual_day", "road_status_id"))
-kable(table(by2olak_data_proper_status$road_status_id, by2olak_data_proper_status$actual_day))
+kable(as.data.frame(table(by2olak_data_proper_status$road_status_id, by2olak_data_proper_status$actual_day)))
 ```
 
 ###Districts with highest requests.
@@ -343,7 +360,7 @@ id is actually calculated based on the reports status ids for the road at the ti
 and the report status id are positively correlated.
 
 ```{r}
-cor(by2olak_data[c("road_status_id","report_status_id")]) 
+kable(as.data.frame(cor(by2olak_data[c("road_status_id","report_status_id")])))
 ```
 
 #### Road Update Hours ago
@@ -617,13 +634,15 @@ of the recent report.
 
 Now let's have a look on both dataframes:
 ```{r}
-table(by2olak_data$road_update_hours_ago)
+kable(as.data.frame(table(by2olak_data$road_update_hours_ago)))
 ```
+
 The hours ranges from 0 to 54 hours which is a lot and thus the information on the road would not be correct as it will be outdated.
 
 ```{r}
-table(by2olak_data_proper_status$road_update_hours_ago)
+kable(as.data.frame(table(by2olak_data_proper_status$road_update_hours_ago)))
 ```
+
 The hours have only values of 0 and 1 which is logically correct as the road status should only be updated when the duration of the reports are short.
 
 #### Hypothesis Result
@@ -633,10 +652,10 @@ the status ids that range from 1 to 5, but the others like "b2ollak eh" or "7ads
 
 ### 2. The Activity of the application is the same during all day (No rush-hours & day and night are the same)
 
-We disgard the roads that are outdated and have old status id as they depend on old reports.
+We disgard the roads that are outdated and have old status id as they depend on old outdated reports.
 ```{r}
 by2olak_data_proper_status_updated <- by2olak_data_proper_status[by2olak_data_proper_status['time_hours'] > 0 & by2olak_data_proper_status['report_update_hours_ago'] <5 ,]
-table(by2olak_data_proper_status_updated$day_night)
+kable(as.data.frame(table(by2olak_data_proper_status_updated$day_night)))
 pie(table(by2olak_data_proper_status_updated$day_night))
 ggplot(by2olak_data_proper_status_updated, aes(time_hours, group=actual_day)) + 
     geom_histogram(aes(colour=actual_day, fill=actual_day), binwidth=1, alpha=0.9) +
