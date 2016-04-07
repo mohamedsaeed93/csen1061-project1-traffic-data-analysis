@@ -37,17 +37,6 @@ data_view <- as.data.frame(rapply(by2olak_data, function(x) length(unique(x))))
 kable(rename(data_view, c("rapply(by2olak_data, function(x) length(unique(x)))"="Number of Unique Values")))
 ```
 
-### Unique values in rd.img column 
-```{r}
-kable(as.data.frame(unique(by2olak_data['rd.img'])))
-```
-
-It is obvious that NA corresponds to no image which simply can be false.
-
-```{r}
-by2olak_data <- by2olak_data %>% mutate(rd.img = ifelse(is.na(rd.img),FALSE,rd.img))
-```
-
 ### Unique values in rd.cl column 
 ```{r}
 unique(by2olak_data['rd.cl'])
@@ -73,6 +62,18 @@ The Date is a little bit better than before
 ```{r}
 glimpse(by2olak_data)
 ```
+### Unique values in rd.img column 
+```{r}
+kable(as.data.frame(unique(by2olak_data['rd.img'])))
+```
+
+It is obvious that NA corresponds to no image which simply can be false.
+
+```{r}
+by2olak_data <- by2olak_data %>% mutate(rd.img = ifelse(is.na(rd.img),FALSE,rd.img))
+```
+
+### Removal of User full name column
 The 2 columns rd.rp.fullnm & rd.rp.nm are similar from the values of the 2 columns as one is the username
  and the other is the full name of the user which is not very useful		
 
@@ -85,13 +86,17 @@ It is possible to remove rd.rp.fullnm as it has a lot of NAs and the column does
 ```{r}
 by2olak_data <- subset( by2olak_data, select = -rd.rp.fullnm)
 ```
+
 At this point, it is useful to see the number of NAs in each column:
 ```{r}
 data_view <- as.data.frame(rapply(subset(by2olak_data, select = c(rd.rp.rpImg,rd.rp.img)), function(x) sum(is.na(x))))
 kable(rename(data_view, c("rapply(subset(by2olak_data, select = c(rd.rp.rpImg, rd.rp.img)), function(x) sum(is.na(x)))"="Number of NAs")))
 ```
 
-A lot of NAs are there in rd.rp.rpImg & rd.rp.img so we can add a default value for these NAs
+### Default Values for Road and Report images
+
+A lot of NAs are there in rd.rp.rpImg & rd.rp.img so we can add a default value for these NAs which could be zero but first
+we have to make sure zero is not a value in these columns.
 
 ```{r}
 data_view <- as.data.frame(rapply(subset(by2olak_data, select = c(rd.rp.rpImg,rd.rp.img)), function(x) sum(x == 0 | is.na(x))))
@@ -187,6 +192,9 @@ kable(data_sample[,c('day','actual_day','rd.hr')])
 
 ## Additional Columns for adding features
 
+
+### Splitting the road name into road header and road start and road destination
+
 Create columns that split the road name into 2 in which one is the road header and the other one is the path_taken
 ```{r, warning=FALSE}
 by2olak_data <- by2olak_data %>% separate(rd.nm, c("road_header", "road_path_taken"), ";")  
@@ -210,17 +218,19 @@ by2olak_data$road_destination[is.na(by2olak_data$road_destination)] <- "NONE"
 ```
 
 
-Create a column to show the reports origin : GPS or Users (boolean)
+### Creating a column to show the reports origin : Automated or not
 ```{r}
 by2olak_data['gps'] <- (by2olak_data['rd.rp.nm'] == "bey2ollakgps")
 ```
 
-Create a column to show if the reports are from Annonnoumous Users.
+###Creating a column to show if the reports are from Anonymous Users.
 ```{r}
 by2olak_data['anonymous'] <- (by2olak_data['rd.rp.nm'] == "fa3el kheir")
 ```
 
-Create a column to describe the day and night in the data.
+
+###Creating a column to distinguish between day and night in the data.
+
 The Night is considered from 9 pm to 6 am (After Work and Rush hours)
 2 are subtracted from the hours to get the proper time in Cairo time-zone  
 ```{r}
@@ -232,7 +242,7 @@ by2olak_data <- by2olak_data %>% mutate(time_hours = ifelse(by2olak_data$time_ho
 by2olak_data <- by2olak_data %>% mutate(day_night = ifelse(by2olak_data$time_hours < 6 | by2olak_data$time_hours>= 21 , "NIGHT", "DAY"))
 ```
 
-## Obtaining the Speed of roads from the automated reports by the GPS.
+### Obtaining the Speed of roads from the automated reports by the GPS.
 ```{r}
 by2olak_data$speed <- str_extract(by2olak_data$rd.rp.cm, "([0-9]+ km/h)|[0-9]+ كم/س")
 by2olak_data$speed <- str_extract(by2olak_data$speed, "([0-9]+)")
@@ -252,7 +262,6 @@ by2olak_data <- subset(by2olak_data, select=c(crawl_date,day,actual_day,time_hou
 	rd.rp.mn,rd.rp.stid,rd.rp.cm,rd.rp.cmid,speed,rd.rp.rpImg,rd.rp.img))
 colnames(by2olak_data)
 ```
-
 
 ## Removal of columns related to by2ollak application for processing and does not affect the data
 
@@ -278,6 +287,7 @@ Here is the summary after cleaning the data
 ```{r,eval=F}
 summary(by2olak_data)
 ```
+
 # Descriptive Statistics to investigate the metrics and dimensions.
 
 ## Summary Statistics
@@ -317,7 +327,7 @@ filtered_data <- count(by2olak_data_proper_status, c("actual_day", "road_status_
 kable(as.data.frame(table(by2olak_data_proper_status$road_status_id, by2olak_data_proper_status$actual_day)))
 ```
 
-###Districts with highest requests.
+###Districts with highest activity.
 ```{r}
 filtered_data <- count(by2olak_data_proper_status, c("road_header"))
 kable(head(filtered_data [with(filtered_data , order(desc(freq))),]))
@@ -334,17 +344,18 @@ estimate_mode <- function(x) {
  }
 ```
 
-#### Mean - Median - Mode
-are all ways to describe the average or the central point of the data
+### Mean - Median - Mode
+All of these are ways to describe the average or the central point of the data
 
-#### Standard deviation
+### Standard deviation
 expresses by how much the values differ from the mean value(there is the 68–95–99.7 rule) which
 is a shorthand to remember the percentage of values that lie within a band around the mean in a normal distribution with
 a width of one, two and three standard deviations, respectively; more accurately, 68.27%, 95.45% and 99.73% of the value
 
-#### Variance
+### Variance
 shows how the data is different, divergent, or inconsistent.
 
+Now let's compute them for the important columns
 #### Road Status Id
 ```{r}
 mean(by2olak_data_proper_status$road_status_id)
@@ -396,9 +407,8 @@ application users during the day.
 ### Histograms of the most important columns 
 ```{r, message = FALSE}
 data_plot <- melt(subset(by2olak_data, select=c(road_status_id,report_status_id,road_update_hours_ago,road_update_mins_ago,report_update_hours_ago,report_update_mins_ago)))
-ggplot(data_plot,aes(x = value)) + 
-    facet_wrap(~variable,scales = "free_x") + 
-    geom_histogram()
+ggplot(data_plot,aes(x = value)) + facet_wrap(~variable,scales = "free_x") + 
+scale_y_continuous(breaks = seq(0, 150000, by = 10000)) + geom_histogram() 
 ```
 
 The road status id and the report status id histograms are having the same trend as the road status id is calculated base on
@@ -406,9 +416,13 @@ the report status id. For the hours for the road, they are biased towards zero a
 while the hours for reports are still in the first half of the graph but they are scattered unlike in case of roads. 
 
 ### Automated and Anonymous Reports
+
+In this graph, the data is divided into 2 groups : anonymous and non anonymous reports, then the non-anonymous group is divided
+into automated and non-automated group. 
 ```{r, message = FALSE}
- ggplot(by2olak_data, aes(factor(anonymous), fill = factor(gps))) + geom_bar() +
-xlab("reports by bey2ollakgps") + ylab("Count") + ggtitle("Automated and Anonymous Reports")
+ggplot(by2olak_data, aes(factor(anonymous), fill = factor(gps))) + geom_bar() +
+xlab("Anonymous and non-Anonymous Reports") + ylab("Count") + ggtitle("Classification of Reports") + 
+scale_y_continuous(breaks = seq(0, 150000, by = 10000))
 ```
 
 Most of the users reports with their usernames not anonymously and also the reports are more likely to be reported by users
@@ -416,24 +430,19 @@ but there is still a big portion of reports that are automated based on the GPS 
 
 ```{r, message = FALSE}
 ggplot(data = melt(subset(by2olak_data, select=c(road_status_id, report_status_id))), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable))
-
-ggplot(by2olak_data, aes(road_status_id)) + 
-     geom_histogram(binwidth=0.5, alpha=0.9) +
-     xlab("Roads Status") + ylab("Count") + ggtitle("Road Status Values Distribution")
-
-ggplot(by2olak_data, aes(report_status_id)) + 
-     geom_histogram(binwidth=0.5, alpha=0.9) +
-     xlab("Reports Status") + ylab("Count") + ggtitle("Report Status Values Distribution")
 ```
 
-The median is 10 which is equals to the upper quartile, this is due to the fact that there are a lot of questions and inquiries on the road which can be 
-presented by the 2 above plots which show that there are a huge number of reports and road status ids with value 10 which
-corresponds to "b2olak eh".
+In case of the road status, the median is 10 which is equals to the upper quartile, this is due to the fact that there are
+a lot of questions and inquiries on the road which can be presented by the histograms shown before which show that
+there are a huge number of road status ids with value 10 which corresponds to "b2olak eh". In case of report the median
+is approaching 3 as the data are biased in the first half from 1 to 5 while there are some report status ids with value of 10.
 
+
+Now let's do the box plot one more time using the data with status ids from 1 to 5.
+
+Here are the histograms of road status ids and report status ids for the filtered data
 
 ```{r, message = FALSE}
-ggplot(data = melt(subset(by2olak_data_proper_status, select=c(road_status_id, report_status_id))), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable))
-
 ggplot(by2olak_data_proper_status, aes(road_status_id)) + 
      geom_histogram(binwidth=0.5, alpha=0.9) +
      xlab("Roads Status") + ylab("Count") + ggtitle("Road Status Values Distribution")
@@ -444,49 +453,49 @@ ggplot(by2olak_data_proper_status, aes(report_status_id)) +
 ```
 
 The median is 2 in road and report status id after filtering rows with status ids greater than 5 in both road and
-report status ids, after taking a look at the 2 above plots, it is clear that most of the status ids are equal 2 also from
-the box plot, the ids of value 0 and 5 are cosidered outliers as they are very few.
+report status ids, after taking a look at the 2 above plots, it is clear that most of the status ids are equal 2. 
 
-### Speed Distribution per each Day 
-
-```{r, message = FALSE}
-by2olak_data_proper_speed <- by2olak_data[by2olak_data$gps== TRUE & by2olak_data$speed < 180,] 
-ggplot(by2olak_data_proper_speed , aes(speed, group=actual_day)) + 
-geom_histogram(aes(colour=actual_day, fill=actual_day), binwidth=0.2, alpha=0.9) + ggtitle("Speed Distribution per each day")
-```
-
+Let's construct the box plot and see how it reacts to the filtered data
 
 ```{r, message = FALSE}
-ggplot(by2olak_data[by2olak_data$road_status_id <= 5,] , aes(road_route_id, road_status_id, col = actual_day)) +
-  geom_point(alpha = .6) +
-  stat_smooth(se = FALSE, size = 1.5, span = .2) +
-  scale_x_continuous("road route") +
-  scale_y_continuous("road status") +
-  scale_color_discrete("Day of Week")
+ggplot(data = melt(subset(by2olak_data_proper_status, select=c(road_status_id, report_status_id))), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable))
 ```
+
+From the box plot, the ids of value 0 and 5 are considered outliers as they are very few which is supporting the above 2 plots
+where most of the values are 2 and 3 which considerer 5 as outlier, while 0 as well in case of report status id.
+
+### Reports Status by Road Status
+Here in this graph, it shows the relation of each report statuses with the road statuses.  
 
 ```{r, message = FALSE}
 ggplot(by2olak_data, aes(report_status_id, group=road_status_id)) + 
-     geom_histogram(aes(colour=road_status_id, fill=road_status_id), binwidth=1, alpha=0.9) +
-     xlab("Reports Status") + ylab("Count") + ggtitle("Reports Status by Road Status")
+    geom_histogram(aes(colour=road_status_id, fill=road_status_id), binwidth=1, alpha=0.9) +
+    scale_x_continuous(breaks = seq(0, 10, by = 1)) +
+    xlab("Reports Status") + ylab("Count") 
 ```
 
 Here are 2 plots that show the road and report status ids with respect to the day of the update to give an intuition of the
-distribution of status ids on each day.
+distribution of status ids of roads and reports on each day.
 
 ```{r, message = FALSE}
 ggplot(by2olak_data, aes(road_status_id, group=actual_day)) + 
     geom_histogram(aes(colour=actual_day, fill=actual_day), binwidth=1, alpha=0.9) +
+    scale_x_continuous(breaks = seq(0, 10, by = 1)) +
     xlab("Roads Status") + ylab("Count") + ggtitle("Roads Status per each day")
 
 ggplot(by2olak_data, aes(report_status_id, group=actual_day)) + 
     geom_histogram(aes(colour=actual_day, fill=actual_day), binwidth=1, alpha=0.9) +
+    scale_x_continuous(breaks = seq(0, 10, by = 1)) +
     xlab("Reports Status") + ylab("Count") + ggtitle("Reports Status per each day")
 ```
 
+The two plots (Reports Status per each day) and (Roads Status per each day) show how road status and report status are
+correlated as the two plots are having the same behavior .
+
+Now let's create a box plot for update hours in road and report and see if there are outliers and if so why they exist.
 ```{r, message = FALSE}
 data_plot <- subset(by2olak_data, select=c(actual_day,road_status_id,report_status_id,
-road_update_hours_ago,road_update_mins_ago,report_update_hours_ago,report_update_mins_ago))
+road_update_hours_ago,road_update_mins_ago,report_update_hours_ago,report_update_mins_ago,speed))
 
 ggplot(filter(data_plot), aes(x= actual_day, y= road_update_hours_ago )) + 
      geom_boxplot(aes(fill = actual_day)) +
@@ -497,9 +506,28 @@ ggplot(filter(data_plot), aes(x= actual_day, y= road_update_hours_ago )) +
      stat_summary(fun.y=mean, geom="point", shape=23, size=4) + 
      ggtitle("hours since last update")
 ```
+
 Since the roads are updated regularly, the mean is nearly equals to 0 which introduces a lot of outliers. In case of reports
 the data was biased to the first half as we mentioned before which also introduces outliers but less than that of the roads.
 Here, it is shown clearly how the data is distributed and how the outliers are found.
+
+### Speed Box Plot 
+
+```{r, message = FALSE}
+data_plot_speed <- subset(by2olak_data_proper_speed, select=c(actual_day,road_status_id,report_status_id,
+road_update_hours_ago,road_update_mins_ago,report_update_hours_ago,report_update_mins_ago,speed))
+ggplot(filter(data_plot_speed), aes(x= actual_day, y= speed )) + 
+     geom_boxplot(aes(fill = actual_day)) +
+     stat_summary(fun.y=mean, geom="point", shape=23, size=4) + 
+     ggtitle("Speed")
+```
+
+```{r, message = FALSE}
+mean(data_plot_speed$speed)
+```
+The mean is 62.11 so a lot of outliers are detected but
+they are not as there are highway roads in which speed of 120 for example is normal. Although, there is for example 1519 km/hr
+which is incorrect.
 
 
 ## Commentary
@@ -524,10 +552,8 @@ order to be able to get the confidence intervals of theses columns
 ```{r, message = FALSE}
 N=10000
 road_status_ids_samples_mean=as.vector(N)
-count=1
 for (i in 1:N){
-  road_status_ids_samples_mean[count] <- mean(sample(by2olak_data_proper_status$road_status_id, 1000, replace = TRUE))
-  count=count+1
+  road_status_ids_samples_mean[i] <- mean(sample(by2olak_data_proper_status$road_status_id, 1000, replace = TRUE))
 }
 hist(road_status_ids_samples_mean)
 ```
@@ -553,13 +579,13 @@ qnorm((1-0.99)/2, 2 ,sd(road_status_ids_samples_mean))
 qnorm((0.99/2)+0.5, 2 ,sd(road_status_ids_samples_mean)) 
 ```
 
-Same for the road update hours ago
+Same for the road update hours + mins ago
 ```{r, message = FALSE}
 N=10000
 road_hours_samples_mean=as.vector(N)
 count=1
 for (i in 1:N){
-  road_hours_samples_mean[count] <- mean(sample(by2olak_data_proper_status$road_update_hours_ago, 1000, replace = TRUE))
+  road_hours_samples_mean[count] <- mean(sample(by2olak_data_proper_status$road_update_hours_ago+by2olak_data_proper_status$road_update_mins_ago/60, 1000, replace = TRUE))
   count=count+1
 }
 hist(road_hours_samples_mean)
@@ -607,13 +633,13 @@ qnorm((1-0.95)/2, 3 ,sd(report_status_ids_samples_mean))
 qnorm((0.95/2)+0.5, 3 ,sd(report_status_ids_samples_mean)) 
 ```
 
-Same for the report update hours ago
+Same for the report update hours + mins ago
 ```{r, message = FALSE}
 N=10000
 report_hours_samples_mean=as.vector(N)
 count=1
 for (i in 1:N){
-  report_hours_samples_mean[count] <- mean(sample(by2olak_data_proper_status$report_update_hours_ago, 1000, replace = TRUE))
+  report_hours_samples_mean[count] <- mean(sample(by2olak_data_proper_status$report_update_hours_ago+by2olak_data_proper_status$report_update_mins_ago/60, 1000, replace = TRUE))
   count=count+1
 }
 hist(report_hours_samples_mean)
