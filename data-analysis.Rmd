@@ -207,12 +207,18 @@ Create a column to show if the reports are from Annonnoumous Users.
 by2olak_data['anonymous'] <- (by2olak_data['rd.rp.nm'] == "fa3el kheir")
 ```
 
-Create a column to describe the day and night in the data. The Night is considered from 12 am to 6 am
+Create a column to describe the day and night in the data.
+The Night is considered from 9 pm to 6 am (After Work and Rush hours)
 2 are subtracted from the hours to get the proper time in Cairo time-zone  
 ```{r}
 by2olak_data$time_hours <- format(as.POSIXct(by2olak_data$crawl_date, format="%Y-%m-%d-%H-%M-%S"), format="%H")
-by2olak_data$time_hours <- as.numeric(by2olak_data$time_hours, units = "hours") - 2
-by2olak_data <- by2olak_data %>% mutate(day_night = ifelse(as.numeric(by2olak_data$time_hours, units = "hours") <= 6, "NIGHT", "DAY"))
+by2olak_data$time_hours <- as.numeric(by2olak_data$time_hours, units = "hours")
+by2olak_data <- by2olak_data %>% mutate(time_hours = ifelse(by2olak_data$time_hours < 0,
+    as.numeric(by2olak_data$time_hours, units = "hours") + 12,
+    as.numeric(by2olak_data$time_hours, units = "hours")))
+by2olak_data <- by2olak_data %>% mutate(day_night = ifelse(by2olak_data$time_hours < 6 | by2olak_data$time_hours>= 21 , "NIGHT", "DAY"))
+#by2olak_data <- by2olak_data %>% mutate(day_night = ifelse(as.numeric(by2olak_data$time_hours, units = "hours") < 6  , "NIGHT", "DAY"))
+#by2olak_data <- by2olak_data %>% mutate(day_night = ifelse(as.numeric(by2olak_data$time_hours, units = "hours") < 12  , "NIGHT", "DAY"))
 ```
 
 ## Reordering columns
@@ -600,7 +606,7 @@ qnorm((0.95/2)+0.5, 10,sd(report_hours_samples_mean))
 ### Activity of users is the same on every day of the week. 
 ###(working days and weekends are the same)
 
-### 1. Road status id is always updated depending on the last updated previous reports
+### 1. Road status id is always updated depending on the closest updated previous reports
 
 So far, there are 2 data frames we are working with:
   by2olak_data : the cleaned data with all the status ids without filtering
@@ -625,11 +631,18 @@ The hypothesis states that road status id is always updated depending on the las
 which is not correct. It is only valid when it comes to the basic status ids of by2olak,
 the status ids that range from 1 to 5, but the others like "b2ollak eh" or "7adsa" can be updated at longer durations.
 
-### 2. The Activity of the application is the same during day and night
+### 2. The Activity of the application is the same during all day (No rush-hours & day and night are the same)
+
+We disgard the roads that are outdated and have old status id as they depend on old reports.
 ```{r}
-table(by2olak_data$day_night)
-pie(table(by2olak_data$day_night))
+by2olak_data_proper_status_updated <- by2olak_data_proper_status[by2olak_data_proper_status['time_hours'] > 0 & by2olak_data_proper_status['report_update_hours_ago'] <5 ,]
+table(by2olak_data_proper_status_updated$day_night)
+pie(table(by2olak_data_proper_status_updated$day_night))
+ggplot(by2olak_data_proper_status_updated, aes(time_hours, group=actual_day)) + 
+    geom_histogram(aes(colour=actual_day, fill=actual_day), binwidth=1, alpha=0.9) +
+    xlab("Time of road Status") + ylab("Count") + ggtitle("Time of road status per each day")
 ```
 
 From the pie chart, it is obvious that day time has more activity due to more traffic which could be a result of 
-schools and work (rush-hours) unlike night which is more quiet.
+schools and work (rush-hours) unlike night which is more quiet. Also from the plot, there are 2 peaks at 8:00 to 9:30 and
+also at 16:30 to 18:30 which are the start and end of day for work and school. 
