@@ -12,6 +12,7 @@ library(tidyr)
 library(knitr)
 library(plyr)
 library(BSDA)
+library(stringr)
 ```
 
 # Data Processing : identify metrics and dimensions
@@ -86,15 +87,15 @@ by2olak_data <- subset( by2olak_data, select = -rd.rp.fullnm)
 ```
 At this point, it is useful to see the number of NAs in each column:
 ```{r}
-data_view <- as.data.frame(rapply(by2olak_data, function(x) sum(is.na(x))))
-kable(rename(data_view, c("rapply(by2olak_data, function(x) sum(is.na(x)))"="Number of NAs")))
+data_view <- as.data.frame(rapply(subset(by2olak_data, select = c(rd.rp.rpImg,rd.rp.img)), function(x) sum(is.na(x))))
+kable(rename(data_view, c("rapply(subset(by2olak_data, select = c(rd.rp.rpImg, rd.rp.img)), function(x) sum(is.na(x)))"="Number of NAs")))
 ```
 
 A lot of NAs are there in rd.rp.rpImg & rd.rp.img so we can add a default value for these NAs
 
 ```{r}
-data_view <- as.data.frame(rapply(by2olak_data, function(x) sum(x == 0 | is.na(x))))
-kable(rename(data_view, c("rapply(by2olak_data, function(x) sum(x == 0 | is.na(x)))"="Number of NAs or Zero Values")))
+data_view <- as.data.frame(rapply(subset(by2olak_data, select = c(rd.rp.rpImg,rd.rp.img)), function(x) sum(x == 0 | is.na(x))))
+kable(rename(data_view, c("rapply(subset(by2olak_data, select = c(rd.rp.rpImg, rd.rp.img)), function(x) sum(x == 0 | is.na(x)))"="Number of NAs or Zero Values")))
 ```
 
 Since the number is the same for NAs and for NAs or zeros. We can conclude there are no zero values
@@ -229,8 +230,14 @@ by2olak_data <- by2olak_data %>% mutate(time_hours = ifelse(by2olak_data$time_ho
     as.numeric(by2olak_data$time_hours, units = "hours") + 12,
     as.numeric(by2olak_data$time_hours, units = "hours")))
 by2olak_data <- by2olak_data %>% mutate(day_night = ifelse(by2olak_data$time_hours < 6 | by2olak_data$time_hours>= 21 , "NIGHT", "DAY"))
-#by2olak_data <- by2olak_data %>% mutate(day_night = ifelse(as.numeric(by2olak_data$time_hours, units = "hours") < 6  , "NIGHT", "DAY"))
-#by2olak_data <- by2olak_data %>% mutate(day_night = ifelse(as.numeric(by2olak_data$time_hours, units = "hours") < 12  , "NIGHT", "DAY"))
+```
+
+## Obtaining the Speed of roads from the automated reports by the GPS.
+```{r}
+by2olak_data$speed <- str_extract(by2olak_data$rd.rp.cm, "([0-9]+ km/h)|[0-9]+ كم/س")
+by2olak_data$speed <- str_extract(by2olak_data$speed, "([0-9]+)")
+by2olak_data <- by2olak_data %>% mutate(speed = ifelse(is.na(speed),-1,speed))
+by2olak_data$speed <- as.numeric(by2olak_data$speed)
 ```
 
 ## Reordering columns
@@ -242,7 +249,7 @@ The columns are not in order anymore, it can be fixed by specifying the order we
 ```{r}
 by2olak_data <- subset(by2olak_data, select=c(crawl_date,day,actual_day,time_hours,day_night,road_header,road_start,road_destination,rd.ri,
 	rd.stid,rd.hr,rd.mn,rd.new,rd.img,rd.strq,rd.cmrq,rd.rp.nm,gps,anonymous,rd.rp.hr,
-	rd.rp.mn,rd.rp.stid,rd.rp.cm,rd.rp.cmid,rd.rp.rpImg,rd.rp.img))
+	rd.rp.mn,rd.rp.stid,rd.rp.cm,rd.rp.cmid,speed,rd.rp.rpImg,rd.rp.img))
 colnames(by2olak_data)
 ```
 
@@ -440,6 +447,14 @@ The median is 2 in road and report status id after filtering rows with status id
 report status ids, after taking a look at the 2 above plots, it is clear that most of the status ids are equal 2 also from
 the box plot, the ids of value 0 and 5 are cosidered outliers as they are very few.
 
+### Speed Distribution per each Day 
+
+```{r, message = FALSE}
+by2olak_data_proper_speed <- by2olak_data[by2olak_data$gps== TRUE & by2olak_data$speed < 180,] 
+ggplot(by2olak_data_proper_speed , aes(speed, group=actual_day)) + 
+geom_histogram(aes(colour=actual_day, fill=actual_day), binwidth=0.2, alpha=0.9) + ggtitle("Speed Distribution per each day")
+```
+
 
 ```{r, message = FALSE}
 ggplot(by2olak_data[by2olak_data$road_status_id <= 5,] , aes(road_route_id, road_status_id, col = actual_day)) +
@@ -469,10 +484,6 @@ ggplot(by2olak_data, aes(report_status_id, group=actual_day)) +
     xlab("Reports Status") + ylab("Count") + ggtitle("Reports Status per each day")
 ```
 
-Since the roads are updated regularly, the mean is nearly equals to 0 which introduces a lot of outliers. In case of reports
-the data was biased to the first half as we mentioned before which also introduces outliers but less than that of the roads.
-Here, it is shown clearly how the data is distributed and how the outliers are found.
-
 ```{r, message = FALSE}
 data_plot <- subset(by2olak_data, select=c(actual_day,road_status_id,report_status_id,
 road_update_hours_ago,road_update_mins_ago,report_update_hours_ago,report_update_mins_ago))
@@ -486,6 +497,10 @@ ggplot(filter(data_plot), aes(x= actual_day, y= road_update_hours_ago )) +
      stat_summary(fun.y=mean, geom="point", shape=23, size=4) + 
      ggtitle("hours since last update")
 ```
+Since the roads are updated regularly, the mean is nearly equals to 0 which introduces a lot of outliers. In case of reports
+the data was biased to the first half as we mentioned before which also introduces outliers but less than that of the roads.
+Here, it is shown clearly how the data is distributed and how the outliers are found.
+
 
 ## Commentary
 At this point, we can conclude that there are a lot of status ids of value 10 which is a "b2olak eh" which is a question
@@ -619,9 +634,6 @@ qnorm((0.95/2)+0.5, 10,sd(report_hours_samples_mean))
 ```
 
 ## Hypothesis Testing (null hypothesis testing)
-
-### Activity of users is the same on every day of the week. 
-###(working days and weekends are the same)
 
 ### 1. Road status id is always updated depending on the closest updated previous reports
 
