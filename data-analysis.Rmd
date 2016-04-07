@@ -207,6 +207,14 @@ Create a column to show if the reports are from Annonnoumous Users.
 by2olak_data['anonymous'] <- (by2olak_data['rd.rp.nm'] == "fa3el kheir")
 ```
 
+Create a column to describe the day and night in the data. The Night is considered from 12 am to 6 am
+2 are subtracted from the hours to get the proper time in Cairo time-zone  
+```{r}
+by2olak_data$time_hours <- format(as.POSIXct(by2olak_data$crawl_date, format="%Y-%m-%d-%H-%M-%S"), format="%H")
+by2olak_data$time_hours <- as.numeric(by2olak_data$time_hours, units = "hours") - 2
+by2olak_data <- by2olak_data %>% mutate(day_night = ifelse(as.numeric(by2olak_data$time_hours, units = "hours") <= 6, "NIGHT", "DAY"))
+```
+
 ## Reordering columns
 ```{r}
 colnames(by2olak_data)
@@ -214,7 +222,7 @@ colnames(by2olak_data)
 
 The columns are not in order anymore, it can be fixed by specifying the order we want.
 ```{r}
-by2olak_data <- subset(by2olak_data, select=c(day,actual_day,crawl_date,rd.nm,road_header,road_start,road_destination,rd.ri,
+by2olak_data <- subset(by2olak_data, select=c(day,actual_day,time_hours,day_night,crawl_date,rd.nm,road_header,road_start,road_destination,rd.ri,
 	rd.stid,rd.hr,rd.mn,rd.new,rd.img,rd.strq,rd.cmrq,rd.rp.nm,gps,anonymous,rd.rp.hr,
 	rd.rp.mn,rd.rp.stid,rd.rp.cm,rd.rp.cmid,rd.rp.rpImg,rd.rp.img))
 colnames(by2olak_data)
@@ -273,10 +281,10 @@ by2olak_data_proper_status <- by2olak_data[by2olak_data$road_status_id <= 5,]
 by2olak_data_proper_status <- by2olak_data_proper_status[by2olak_data_proper_status$report_status_id <= 5,]
 ```
 
-###Roads status for each day
+###Roads status for each day from 1 to 5 in order
 ```{r}
 filtered_data <- count(by2olak_data_proper_status, c("actual_day", "road_status_id"))
-kable(filtered_data [with(filtered_data , order(road_status_id, desc(freq))),])
+kable(table(by2olak_data_proper_status$road_status_id, by2olak_data_proper_status$actual_day))
 ```
 
 ###Districts with highest requests.
@@ -497,12 +505,12 @@ z.test(road_status_ids_samples_mean, sigma.x = sd(road_status_ids_samples_mean),
 Now, to get the 99% confidence interval for the road status id to be 2 is going to be calculated using these 2 equations,
 one for the upper bound and the other for the lower bound.
 
-### Lower Bound
+#### Lower Bound
 ```{r, message = FALSE}
 qnorm((1-0.99)/2, 2 ,sd(road_status_ids_samples_mean))
 ```
 
-### Upper Bound
+#### Upper Bound
 ```{r, message = FALSE}
 qnorm((0.99/2)+0.5, 2 ,sd(road_status_ids_samples_mean)) 
 ```
@@ -523,12 +531,12 @@ z.test(road_hours_samples_mean, sigma.x = sd(road_hours_samples_mean), conf.leve
 Now, to get the 99% confidence interval for the road update hours to be 1 is going to be
 calculated using these 2 equations, one for the upper bound and the other for the lower bound as before.
 
-### Lower Bound
+#### Lower Bound
 ```{r, message = FALSE}
 qnorm((1-0.99)/2, 1 ,sd(road_hours_samples_mean)) 
 ```
 
-### Upper Bound
+#### Upper Bound
 ```{r, message = FALSE}
 qnorm((0.99/2)+0.5, 1,sd(road_hours_samples_mean)) 
 ```
@@ -551,12 +559,12 @@ z.test(report_status_ids_samples_mean, sigma.x = sd(report_status_ids_samples_me
 Now, to get the 95% confidence interval for the report status id to be 3 is going to be calculated using these 2 equations,
 one for the upper bound and the other for the lower bound.
 
-### Lower Bound
+#### Lower Bound
 ```{r, message = FALSE}
 qnorm((1-0.95)/2, 3 ,sd(report_status_ids_samples_mean))
 ```
 
-### Upper Bound
+#### Upper Bound
 ```{r, message = FALSE}
 qnorm((0.95/2)+0.5, 3 ,sd(report_status_ids_samples_mean)) 
 ```
@@ -577,14 +585,51 @@ z.test(report_hours_samples_mean, sigma.x = sd(report_hours_samples_mean), conf.
 Now, to get the 95% confidence interval for the report update hours to be 10 is going to be
 calculated using these 2 equations, one for the upper bound and the other for the lower bound as before.
 
-### Lower Bound
+#### Lower Bound
 ```{r, message = FALSE}
 qnorm((1-0.95)/2, 10 ,sd(report_hours_samples_mean))
 ```
 
-### Upper Bound
+#### Upper Bound
 ```{r, message = FALSE}
 qnorm((0.95/2)+0.5, 10,sd(report_hours_samples_mean))
 ```
 
 ## Hypothesis Testing (null hypothesis testing)
+
+### Activity of users is the same on every day of the week. 
+###(working days and weekends are the same)
+
+### 1. Road status id is always updated depending on the last updated previous reports
+
+So far, there are 2 data frames we are working with:
+  by2olak_data : the cleaned data with all the status ids without filtering
+  by2olak_data_proper_status: the cleaned data with rows having status ids from 1 to 5 
+
+The road update hours ago actually depends on the reports update hours ago as it takes the value of update hours ago
+of the recent report.
+
+Now let's have a look on both dataframes:
+```{r}
+table(by2olak_data$road_update_hours_ago)
+```
+The hours ranges from 0 to 54 hours which is a lot and thus the information on the road would not be correct as it will be outdated.
+
+```{r}
+table(by2olak_data_proper_status$road_update_hours_ago)
+```
+The hours have only values of 0 and 1 which is logically correct as the road status should only be updated when the duration of the reports are short.
+
+#### Hypothesis Result
+The hypothesis states that road status id is always updated depending on the last updated previous reports,
+which is not correct. It is only valid when it comes to the basic status ids of by2olak,
+the status ids that range from 1 to 5, but the others like "b2ollak eh" or "7adsa" can be updated at longer durations.
+
+### 2. The Activity of the application is the same during day and night
+```{r}
+table(by2olak_data$day_night)
+pie(table(by2olak_data$day_night))
+```
+
+From the pie chart, it is obvious that day time has more activity due to more traffic which could be a result of 
+schools and work (rush-hours) unlike night which is more quiet.
