@@ -147,7 +147,7 @@ Now the only column which contains NAs is rd.stid
 ```{r}
 sum(is.na(by2olak_data['rd.stid']))
 ```
-It can be omited as there are the last rows with NAs and they are around 6% of the whole data
+It can be omitted as there are the last rows with NAs and they are around 6% of the whole data
 ```{r}
 by2olak_data <- na.omit(by2olak_data)
 ```
@@ -428,6 +428,24 @@ scale_y_continuous(breaks = seq(0, 150000, by = 10000))
 Most of the users reports with their usernames not anonymously and also the reports are more likely to be reported by users
 but there is still a big portion of reports that are automated based on the GPS in the smart phones.
 
+### Speed Box Plot 
+
+```{r, message = FALSE}
+data_plot_speed <- subset(by2olak_data_proper_speed, select=c(actual_day,road_status_id,report_status_id,
+road_update_hours_ago,road_update_mins_ago,report_update_hours_ago,report_update_mins_ago,speed))
+ggplot(filter(data_plot_speed), aes(x= actual_day, y= speed )) + 
+     geom_boxplot(aes(fill = actual_day)) +
+     stat_summary(fun.y=mean, geom="point", shape=23, size=4) + 
+     ggtitle("Speed")
+```
+
+```{r, message = FALSE}
+mean(data_plot_speed$speed)
+```
+The mean is 62.11 so a lot of outliers are detected but
+they are not as there are highway roads in which speed of 120 for example is normal. Although, there is for example 1519 km/hr
+which is incorrect.
+
 ```{r, message = FALSE}
 ggplot(data = melt(subset(by2olak_data, select=c(road_status_id, report_status_id))), aes(x=variable, y=value)) + geom_boxplot(aes(fill=variable))
 ```
@@ -462,7 +480,7 @@ ggplot(data = melt(subset(by2olak_data_proper_status, select=c(road_status_id, r
 ```
 
 From the box plot, the ids of value 0 and 5 are considered outliers as they are very few which is supporting the above 2 plots
-where most of the values are 2 and 3 which considerer 5 as outlier, while 0 as well in case of report status id.
+where most of the values are 2 and 3 which consider 5 as outlier, while 0 as well in case of report status id.
 
 ### Reports Status by Road Status
 Here in this graph, it shows the relation of each report statuses with the road statuses.  
@@ -509,33 +527,14 @@ ggplot(filter(data_plot), aes(x= actual_day, y= road_update_hours_ago )) +
 
 Since the roads are updated regularly, the mean is nearly equals to 0 which introduces a lot of outliers. In case of reports
 the data was biased to the first half as we mentioned before which also introduces outliers but less than that of the roads.
-Here, it is shown clearly how the data is distributed and how the outliers are found.
-
-### Speed Box Plot 
-
-```{r, message = FALSE}
-data_plot_speed <- subset(by2olak_data_proper_speed, select=c(actual_day,road_status_id,report_status_id,
-road_update_hours_ago,road_update_mins_ago,report_update_hours_ago,report_update_mins_ago,speed))
-ggplot(filter(data_plot_speed), aes(x= actual_day, y= speed )) + 
-     geom_boxplot(aes(fill = actual_day)) +
-     stat_summary(fun.y=mean, geom="point", shape=23, size=4) + 
-     ggtitle("Speed")
-```
-
-```{r, message = FALSE}
-mean(data_plot_speed$speed)
-```
-The mean is 62.11 so a lot of outliers are detected but
-they are not as there are highway roads in which speed of 120 for example is normal. Although, there is for example 1519 km/hr
-which is incorrect.
-
+From the above box plots, it is shown clearly how the data is distributed and how the outliers are found.
 
 ## Commentary
 At this point, we can conclude that there are a lot of status ids of value 10 which is a "b2olak eh" which is a question
 or a query, this is one of main problems with this data. After filtering status ids with value greater than 5.
 It was clear that most of the reports on roads and the actual road themselves have a status id of 2 which is "lazeez".
-From the tables above, it is noticed that friday has the least number of status ids for each value which is an indicator
-to the inacitivity of users on this day as it is a holiday and the roads are already "7alawa" which does not require the
+From the tables above, it is noticed that Friday has the least number of status ids for each value which is an indicator
+to the inactivity of users on this day as it is a holiday and the roads are already "7alawa" which does not require the
 application for information.
 
 # Inferential Data Analysis
@@ -670,7 +669,7 @@ So far, there are 2 data frames we are working with:
 The road update hours ago actually depends on the reports update hours ago as it takes the value of update hours ago
 of the recent report.
 
-Now let's have a look on both dataframes:
+Now let's have a look on both data frames:
 ```{r}
 kable(as.data.frame(table(by2olak_data$road_update_hours_ago)))
 ```
@@ -690,7 +689,7 @@ the status ids that range from 1 to 5, but the others like "b2ollak eh" or "7ads
 
 ### 2. The Activity of the application is the same during all day (No rush-hours & day and night are the same)
 
-We disgard the roads that are outdated and have old status id as they depend on old outdated reports.
+We discard the roads that are outdated and have old status id as they depend on old outdated reports.
 ```{r}
 by2olak_data_proper_status_updated <- by2olak_data_proper_status[by2olak_data_proper_status['time_hours'] > 0 & by2olak_data_proper_status['report_update_hours_ago'] <5 ,]
 kable(as.data.frame(table(by2olak_data_proper_status_updated$day_night)))
@@ -702,4 +701,4 @@ ggplot(by2olak_data_proper_status_updated, aes(time_hours, group=actual_day)) +
 
 From the pie chart, it is obvious that day time has more activity due to more traffic which could be a result of 
 schools and work (rush-hours) unlike night which is more quiet. Also from the plot, there are 2 peaks at 8:00 to 9:30 and
-also at 16:30 to 18:30 which are the start and end of day for work and school. 
+also at 16:30 to 18:30 which are the start and end of day for work and school where Friday and Saturday take a very small portion. 
