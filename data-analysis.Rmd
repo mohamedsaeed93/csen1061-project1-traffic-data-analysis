@@ -356,7 +356,9 @@ a width of one, two and three standard deviations, respectively; more accurately
 shows how the data is different, divergent, or inconsistent.
 
 Now let's compute them for the important columns
+
 #### Road Status Id
+
 ```{r}
 mean(by2olak_data_proper_status$road_status_id)
 median(by2olak_data_proper_status$road_status_id)
@@ -366,6 +368,7 @@ var(by2olak_data_proper_status$road_status_id)
 ```
 
 #### Report Status Id
+
 ```{r}
 mean(by2olak_data_proper_status$report_status_id)
 median(by2olak_data_proper_status$report_status_id)
@@ -382,6 +385,7 @@ kable(as.data.frame(cor(by2olak_data[c("road_status_id","report_status_id")])))
 ```
 
 #### Road Update Hours ago
+
 ```{r}
 mean(by2olak_data_proper_status$road_update_hours_ago)
 median(by2olak_data_proper_status$road_update_hours_ago)
@@ -389,9 +393,11 @@ estimate_mode(by2olak_data_proper_status$road_update_hours_ago)
 sd(by2olak_data_proper_status$road_update_hours_ago)
 var(by2olak_data_proper_status$road_update_hours_ago)
 ```
-All the values approach zero which indicates that the status of the roads are updated regularly. 
+All the values approach zero which indicates that the status of the roads are updated regularly and that the data are centered
+around the mean as the variance is nearly equal to zero.
 
 #### Report Update Hours ago
+
 ```{r}
 mean(by2olak_data_proper_status$report_update_hours_ago)
 median(by2olak_data_proper_status$report_update_hours_ago)
@@ -400,7 +406,8 @@ sd(by2olak_data_proper_status$report_update_hours_ago)
 var(by2olak_data_proper_status$report_update_hours_ago)
 ```
 The values are different from the road status and they are not approaching zero which is a result of the inactivity of the
-application users during the day. 
+application users during the day as there are a lot of delay and a lot of reports that are outdated. The mean is 10 which means
+that the reports are outdated by 10 hours which is huge. 
 
 ## Data Visualization
 
